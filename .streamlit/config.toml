@@ -1,0 +1,8 @@
+# Keep native widgets and tables consistent with the dashboard on Streamlit Cloud.
+[theme]
+base = "light"
+primaryColor = "#7B3FF2"
+backgroundColor = "#F5F6FA"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#24212B"
+font = "sans serif"

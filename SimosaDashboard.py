@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 from google import genai
+from google.genai import types
 
 import gspread
 import numpy as np
@@ -26,29 +27,29 @@ SPREADSHEET_URL = (
 
 LOCAL_CREDS_FILE = (
     Path(__file__).resolve().parent
-    / "simosa-sentiment-automation-6225cae51719.json"
+    / "simosa-sentiment-automation-6bfff36d7142.json"
 )
 
 APP_KEY = "simosa"
 APP_NAME = "SIMOSA"
 
-# Brand palette inspired by the SIMOSA orange / magenta / violet identity.
-ORANGE = "#FF8A1E"
-ORANGE_DEEP = "#FF5D35"
-PINK = "#E83882"
-PURPLE = "#7B3FF2"
-PURPLE_DEEP = "#4B2AA8"
+# Restrained analytical palette; brighter brand accents stay in the header.
+ORANGE = "#B18A55"
+ORANGE_DEEP = "#946C40"
+PINK = "#A36D7C"
+PURPLE = "#536B91"
+PURPLE_DEEP = "#344B6D"
 INK = "#24212B"
 MUTED = "#6D6876"
 SOFT = "#F7F5FA"
 BORDER = "#ECE8F1"
-GREEN = "#2E9C78"
-RED = "#D6535D"
-AMBER = "#C78822"
+GREEN = "#408477"
+RED = "#B7656B"
+AMBER = "#A0804E"
 
 SENTIMENT_COLORS = {
     "Positive": GREEN,
-    "Neutral": "#B8B2C0",
+    "Neutral": "#A9B3C2",
     "Negative": RED,
 }
 
@@ -411,9 +412,13 @@ div[data-testid="stAlert"] {
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
+# Reuse one root placeholder so the login form is removed before network I/O.
+auth_surface = st.empty()
 if not st.session_state["authenticated"]:
-    render_login_page()
+    with auth_surface.container():
+        render_login_page()
     st.stop()
+auth_surface.empty()
 
 def inject_css() -> None:
     st.markdown(
@@ -437,60 +442,145 @@ def inject_css() -> None:
             background:
                 radial-gradient(circle at 8% 2%, rgba(255,138,30,0.10), transparent 25%),
                 radial-gradient(circle at 98% 6%, rgba(123,63,242,0.09), transparent 28%),
-                #FFFFFF;
+                #F5F6FA;
             color: var(--ink);
         }}
 
-        .main .block-container {{
+        [data-testid="stMainBlockContainer"], .main .block-container {{
             padding-top: 1.25rem;
             padding-bottom: 3rem;
             max-width: 1480px;
         }}
 
-                /* Sidebar */
+        /* =========================================================
+            SIDEBAR
+        ========================================================= */
+
         [data-testid="stSidebar"] {{
-            background: #34343D !important;
-            border-right: 1px solid #454550 !important;
+            background: #171C30 !important;
+            border-right: 1px solid #2D344C !important;
+        }}
+
+        [data-testid="stSidebar"] [data-testid="stSidebarContent"] {{
+            padding-top: 1.5rem;
         }}
 
         [data-testid="stSidebar"] h1,
         [data-testid="stSidebar"] h2,
         [data-testid="stSidebar"] h3 {{
-            color: #171515 !important;
-            -webkit-text-fill-color: #171515 !important;
+            color: #FFFFFF !important;
+            -webkit-text-fill-color: #FFFFFF !important;
         }}
 
         [data-testid="stSidebar"] p,
-        [data-testid="stSidebar"] label {{
-            color: #34343D !important;
-            -webkit-text-fill-color: #34343D!important;
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] span {{
+            color: #F4F1F6 !important;
+            -webkit-text-fill-color: #F4F1F6 !important;
         }}
 
         [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{
-            color: #34343D !important;
-            -webkit-text-fill-color: #34343D !important;
+            color: #BDB8C4 !important;
+            -webkit-text-fill-color: #BDB8C4 !important;
         }}
 
         [data-testid="stSidebar"] [data-baseweb="select"] > div {{
-            background: #FFFFFF !important;
-            border: 1px solid #34343D !important;
+            background: #24242B !important;
+            border: 1px solid #51515C !important;
             border-radius: 11px !important;
         }}
 
-        [data-testid="stSidebar"] [data-baseweb="select"] * {{
-            color: #34343D !important;
-            -webkit-text-fill-color: #34343D !important;
+        [data-testid="stSidebar"] [data-baseweb="select"] span,
+        [data-testid="stSidebar"] [data-baseweb="select"] div {{
+            color: #FFFFFF !important;
+            -webkit-text-fill-color: #FFFFFF !important;
+        }}
+
+        [data-testid="stSidebar"] [data-baseweb="select"] svg {{
+            fill: #FFFFFF !important;
+            color: #FFFFFF !important;
+        }}
+
+        [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {{
+            color: #F4F1F6 !important;
+            -webkit-text-fill-color: #F4F1F6 !important;
+            font-weight: 600 !important;
         }}
 
         [data-testid="stSidebar"] .simosa-pill {{
             background: #FFFFFF !important;
-            color: #363737 !important;
-            -webkit-text-fill-color: #363737 !important;
+            color: #34343D !important;
+            -webkit-text-fill-color: #34343D !important;
+            border: none !important;
         }}
 
         [data-testid="stSidebar"] hr {{
             border-color: rgba(255,255,255,0.16) !important;
         }}
+
+        [data-testid="stSidebar"] .stButton > button {{
+            width: 100% !important;
+            color: #F4F6FC !important;
+            -webkit-text-fill-color: #F4F6FC !important;
+            background: #33445F !important;
+            border: 1px solid #52627C !important;
+            border-radius: 10px !important;
+            font-weight: 600 !important;
+        }}
+        [data-testid="stSidebar"] .stButton > button:hover {{
+            background: #435878 !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] {{
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stSidebarContent"] {{
+            background: #171C30 !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stSidebarUserContent"] {{
+            padding: 24px 20px;
+        }}
+        [data-testid="stSidebar"] [data-baseweb="select"] > div {{
+            background: #242E44 !important;
+            border-color: #43516A !important;
+        }}
+        [data-testid="stSidebar"] .simosa-pill {{
+            background: #28334A !important;
+            color: #DEE5F2 !important;
+            -webkit-text-fill-color: #DEE5F2 !important;
+            border: 1px solid #43516A !important;
+            box-shadow: none;
+        }}
+        [role="listbox"] {{ background: #FFFFFF !important; }}
+        [role="option"], [role="option"] :is(span, div) {{
+            color: #242A40 !important;
+            -webkit-text-fill-color: #242A40 !important;
+        }}
+        .loading-panel {{
+            max-width: 540px;
+            margin: 12vh auto 4rem;
+            padding: 38px;
+            border: 1px solid #DEE3EC;
+            border-radius: 18px;
+            background: #FFFFFF;
+            box-shadow: 0 12px 40px rgba(23,28,48,0.06);
+            color: #242A40;
+        }}
+        .loading-panel .loading-eyebrow {{
+            color: #536B91; font-size: 0.72rem; letter-spacing: 0.12em;
+            font-weight: 700; margin-bottom: 18px;
+        }}
+        .loading-panel h2 {{ font-size: 1.5rem; margin: 0 0 10px; color: #242A40; }}
+        .loading-panel p {{ color: #687389; font-size: 0.95rem; line-height: 1.6; }}
+        .loading-track {{ height: 3px; background: #E9EDF4; border-radius: 4px; overflow: hidden; margin-top: 26px; }}
+        .loading-track::after {{
+            content: ""; display: block; width: 35%; height: 100%;
+            background: #536B91; animation: loading-slide 1.8s ease-in-out infinite;
+        }}
+        @keyframes loading-slide {{ from {{ transform: translateX(-100%); }} to {{ transform: translateX(390%); }} }}
+        @media (prefers-reduced-motion: reduce) {{ .loading-track::after {{ animation: none; }} }}
 
         /* Hero */
         .simosa-hero-wrap {{
@@ -505,9 +595,9 @@ def inject_css() -> None:
 
         .simosa-hero {{
             position: relative;
-            background: rgba(255,255,255,0.96);
+            background: linear-gradient(115deg, #171C30 0%, #26203D 65%, #35234D 100%);
             border-radius: 27px;
-            padding: 30px 32px;
+            padding: 36px 36px;
             overflow: hidden;
         }}
 
@@ -530,34 +620,34 @@ def inject_css() -> None:
             padding: 7px 12px;
             border-radius: 999px;
             background: linear-gradient(100deg, rgba(255,138,30,0.10), rgba(232,56,130,0.10), rgba(123,63,242,0.10));
-            border: 1px solid rgba(123,63,242,0.12);
+            border: 1px solid rgba(213,191,255,0.25);
             font-size: 0.76rem;
             font-weight: 850;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: #5A3976;
+            color: #E5D8FA;
             margin-bottom: 12px;
         }}
 
         .hero-title {{
-            font-size: 2.35rem;
+            font-size: clamp(1.8rem, 3.1vw, 3rem);
             font-weight: 900;
             line-height: 1.05;
             letter-spacing: -0.035em;
-            margin: 0 0 10px 0;
-            color: var(--ink);
+            margin: 0 0 14px 0;
+            color: #FFFFFF;
         }}
 
         .gradient-text {{
-            background: linear-gradient(90deg, #FF7A1A, #E83882 52%, #713CE7);
+            background: linear-gradient(90deg, #FFBF82, #FFA0CA 52%, #C4ADFF);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }}
 
         .hero-subtitle {{
-            max-width: 980px;
-            color: var(--muted);
+            max-width: 800px;
+            color: #C9CCDC;
             font-size: 1.02rem;
             line-height: 1.55;
             margin: 0;
@@ -614,7 +704,7 @@ def inject_css() -> None:
             position: relative;
             background: rgba(255,255,255,0.95);
             border: 1px solid #EEE9F2;
-            border-radius: 22px;
+            border-radius: 16px;
             box-shadow: 0 10px 30px rgba(53, 36, 69, 0.06);
             overflow: hidden;
         }}
@@ -638,8 +728,9 @@ def inject_css() -> None:
             margin-bottom: 13px;
         }}
         .metric-value {{
-            font-size: 2.25rem;
-            font-weight: 920;
+            font-size: clamp(1.65rem, 2.25vw, 2.25rem);
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
             color: var(--ink);
             line-height: 1.02;
             margin-bottom: 10px;
@@ -681,32 +772,60 @@ def inject_css() -> None:
         }}
 
         /* Containers / tabs */
-        div[data-testid="stVerticalBlockBorderWrapper"] {{
+        [data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"] {{
             border: 1px solid #EEE9F2;
-            border-radius: 24px;
-            background: rgba(255,255,255,0.84);
+            border-radius: 14px;
+            background: #FFFFFF;
             box-shadow: 0 8px 28px rgba(60, 40, 80, 0.045);
-            padding: 4px;
+            padding: 16px;
         }}
 
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 7px;
+        /* Style the label descendants too: deployed themes can otherwise
+           override the button's inherited color, including text-fill-color. */
+        .stTabs [role="tablist"] {{
+            gap: 6px;
             padding: 6px;
-            background: #F7F4F9;
-            border-radius: 15px;
+            background: #EAEcf3;
+            border: 1px solid #DCE0EA;
+            border-radius: 14px;
+            margin-bottom: 24px;
+            overflow-x: auto;
         }}
-        .stTabs [data-baseweb="tab"] {{
-            border-radius: 11px;
-            padding: 9px 16px;
-            font-weight: 760;
-            color: #ba6300 !important;
+        .stTabs button[role="tab"] {{
+            flex: 1 0 auto;
+            min-height: 48px;
+            border-radius: 9px;
+            padding: 10px 20px;
+            background: transparent !important;
+            border: 1px solid transparent;
+            color: #50566D !important;
+            -webkit-text-fill-color: #50566D !important;
+            transition: background 160ms ease, box-shadow 160ms ease;
         }}
-        .stTabs [aria-selected="true"] {{
-            background: linear-gradient(100deg, #FF8A1E, #E83882, #7B3FF2) !important;
-            color: #FFFFFF !important;
-            box-shadow: 0 7px 18px rgba(165, 57, 138, 0.20);
+        .stTabs button[role="tab"] :is(p, span, div) {{
+            color: inherit !important;
+            -webkit-text-fill-color: inherit !important;
+            font-weight: 650;
+            font-size: 0.92rem;
         }}
-        .stTabs [aria-selected="true"] p {{ color: #FFFFFF !important; }}
+        .stTabs button[role="tab"]:hover {{
+            background: #F8F9FD !important;
+            color: #432783 !important;
+            -webkit-text-fill-color: #432783 !important;
+        }}
+        .stTabs button[role="tab"][aria-selected="true"] {{
+            background: #FFFFFF !important;
+            color: #542CA0 !important;
+            -webkit-text-fill-color: #542CA0 !important;
+            border-color: #DCD5EB;
+            box-shadow: 0 2px 6px rgba(27,32,55,0.08), inset 0 -3px #7B3FF2;
+        }}
+        .stTabs [data-baseweb="tab-highlight"],
+        .stTabs [data-baseweb="tab-border"] {{ display: none; }}
+        .stTabs button[role="tab"]:focus-visible {{
+            outline: 3px solid #7B3FF2 !important;
+            outline-offset: -3px;
+        }}
 
         /* Inputs */
         div[data-baseweb="select"] > div {{
@@ -720,21 +839,43 @@ def inject_css() -> None:
             -webkit-text-fill-color: #3e3e45 !important;
         }}
 
-        /* Review Explorer multiselect text */
-        [data-testid="stMultiSelect"] label,
-        [data-testid="stMultiSelect"] p,
-        [data-testid="stMultiSelect"] span,
-        [data-testid="stMultiSelect"] div {{
-            color: #5F5F68 !important;
-            -webkit-text-fill-color: #5F5F68 !important;
+        [data-testid="stMain"] [data-testid="stWidgetLabel"] p {{
+            color: #41475D !important;
+            -webkit-text-fill-color: #41475D !important;
+            font-weight: 600;
         }}
-
-        .stButton > button {{
-            border-radius: 11px;
-            font-weight: 780;
-            border: 0;
-            color: #FFFFFF;
-            background: linear-gradient(100deg, #FF8A1E, #E83882, #7B3FF2);
+        [data-testid="stMain"] :is([data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div) {{
+            background: #FFFFFF !important;
+            border-color: #DCE0EA !important;
+            border-radius: 10px;
+        }}
+        [data-testid="stMain"] :is(input, textarea, [data-baseweb="select"] span) {{
+            color: #242A40 !important;
+            -webkit-text-fill-color: #242A40 !important;
+        }}
+        [data-testid="stMain"] [data-baseweb="tag"] {{
+            background: #EEE7FA !important;
+            color: #542CA0 !important;
+        }}
+        .stButton > button, .stDownloadButton > button {{
+            border-radius: 10px;
+            font-weight: 650;
+            border: 1px solid #6032B8;
+            color: #FFFFFF !important;
+            background: #6032B8;
+            min-height: 42px;
+        }}
+        .stButton > button p, .stDownloadButton > button p {{
+            color: inherit !important;
+            -webkit-text-fill-color: inherit !important;
+        }}
+        .stButton > button:hover, .stDownloadButton > button:hover {{
+            background: #48238F;
+            border-color: #48238F;
+        }}
+        .stButton > button:focus-visible, .stDownloadButton > button:focus-visible {{
+            outline: 3px solid #BDA2EF;
+            outline-offset: 3px;
         }}
 
         .trend-chip {{
@@ -815,6 +956,23 @@ def inject_css() -> None:
             color: #817987;
             font-size: .78rem;
         }}
+        [data-testid="stHeader"] {{ background: rgba(245,246,250,0.96); }}
+        .simosa-hero > * {{ position: relative; z-index: 1; }}
+        .simosa-hero::after {{ pointer-events: none; }}
+        .metric-card {{ border-color: #E1E4ED; box-shadow: 0 4px 16px rgba(27,32,55,0.04); }}
+        .metric-card::before {{ height: 3px; background: #7B3FF2; opacity: 0.65; }}
+        .section-title::after {{ width: 44px; height: 3px; }}
+        .insight-card {{ border-left: 3px solid #B497E8; }}
+        [data-testid="stExpander"] {{ background: #FFFFFF; border-radius: 12px; }}
+        @media (max-width: 900px) {{
+            [data-testid="stMainBlockContainer"] {{ padding: 1rem 1rem 2rem; }}
+            .simosa-hero {{ padding: 26px 22px; }}
+            .metric-card {{ min-height: 150px; padding: 16px 12px; }}
+            .stTabs button[role="tab"] {{ padding: 10px 14px; }}
+        }}
+        @media (prefers-reduced-motion: reduce) {{
+            .stTabs button[role="tab"] {{ transition: none; }}
+        }}
         .spacer {{ height: 24px; }}
         hr {{ border-color: #EEE9F2; }}
         </style>
@@ -824,6 +982,14 @@ def inject_css() -> None:
 
 
 inject_css()
+auth_surface.markdown(
+    '<div class="loading-panel" role="status" aria-live="polite">'
+    '<div class="loading-eyebrow">SIMOSA / CONSUMER INTELLIGENCE</div>'
+    '<h2>Preparing your workspace</h2>'
+    '<p>Loading review insights and reporting periods.</p>'
+    '<div class="loading-track" aria-hidden="true"></div></div>',
+    unsafe_allow_html=True,
+)
 
 
 # =========================================================
@@ -861,11 +1027,19 @@ def get_gspread_client():
                     "[simosa_gcp_service_account] in Secrets."
                 ) from error
 
+        private_key = service_account_info.get("private_key", "")
+
+        private_key = private_key.replace("\\n", "\n").strip()
+
+        if private_key.startswith('"') and private_key.endswith('"'):
+            private_key = private_key[1:-1].strip()
+
+        service_account_info["private_key"] = private_key
+
         credentials = Credentials.from_service_account_info(
             service_account_info,
             scopes=scopes,
         )
-
     return gspread.authorize(credentials)
 
 
@@ -1018,10 +1192,13 @@ def section_header(title: str, subtitle: str = "", kicker: str = "") -> None:
 
 def style_figure(fig: go.Figure, height: int = 380) -> go.Figure:
     fig.update_layout(
+        template="plotly_white",
         height=height,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=INK, family="Inter, Segoe UI, Arial"),
+        font=dict(color=INK, family="Inter, Segoe UI, Arial", size=12),
+        colorway=[PURPLE, GREEN, AMBER, RED, "#8997AC"],
+        bargap=0.36,
         margin=dict(l=20, r=20, t=42, b=35),
         hoverlabel=dict(
             bgcolor="#332B3C",
@@ -1275,32 +1452,51 @@ def get_gemini_api_key() -> str:
 
 
 def call_gemini_text(prompt: str) -> str:
-    """Call Gemini's Interactions API and return plain text."""
-    client = genai.Client(api_key=get_gemini_api_key())
-    errors = []
-
-    for model_name in GEMINI_MODELS:
-        try:
-            interaction = client.interactions.create(
-                model=model_name,
-                input=prompt,
-                store=False,
+    """Bound request time and report actionable errors without exposing secrets."""
+    model = str(st.secrets.get("GEMINI_MODEL", GEMINI_MODELS[0])).strip()
+    try:
+        with genai.Client(
+            api_key=get_gemini_api_key(),
+            http_options=types.HttpOptions(
+                timeout=30000,
+                retry_options=types.HttpRetryOptions(attempts=1),
+            ),
+        ) as client:
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=types.GenerateContentConfig(max_output_tokens=2048),
             )
-            output = (interaction.output_text or "").strip()
-            if output:
-                return output
-            errors.append(f"{model_name}: empty response")
-        except Exception as error:
-            errors.append(f"{model_name}: {error}")
-
-    raise RuntimeError("Gemini request failed. " + " | ".join(errors))
+            output = (response.text or "").strip()
+            if not output:
+                raise RuntimeError("Gemini returned no text. Please try again.")
+            return output
+    except Exception as error:
+        code = getattr(error, "code", None)
+        if code == 429:
+            message = "Gemini quota or rate limit reached (429). Check this project's limits in Google AI Studio, then retry."
+        elif code in (401, 403):
+            message = "Gemini access denied. Check the deployed API key and its API restrictions in Google AI Studio."
+        elif code == 404:
+            message = f"Gemini model {model} is unavailable. Set GEMINI_MODEL in secrets to a model available to your project."
+        elif isinstance(code, int) and code >= 500:
+            message = f"Gemini service error ({code}). Please retry shortly or select another available model using GEMINI_MODEL in secrets."
+        elif code == 400:
+            message = "Gemini rejected the request (400). Check API-key validity and model configuration in Google AI Studio."
+        elif "timeout" in type(error).__name__.lower():
+            message = "Gemini timed out. Please retry; the request timeout is set to 30 seconds."
+        elif isinstance(error, RuntimeError):
+            message = str(error)
+        else:
+            message = f"Gemini connection or service failure ({type(error).__name__}). Please retry."
+        raise RuntimeError(message) from None
 
 
 # =========================================================
 # GEMINI — ASPECT REVIEW SUMMARY
 # =========================================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def generate_aspect_summary(
+def _generate_aspect_summary(
     aspect: str,
     month_key: str,
     reviews: tuple[str, ...],
@@ -1343,17 +1539,14 @@ Requirements:
 - Return only a single paragraph.
 """
 
-    try:
-        return call_gemini_text(prompt)
-    except Exception as error:
-        return f"Aspect summary could not be generated: {error}"
+    return call_gemini_text(prompt)
 
 
 # =========================================================
 # GEMINI — EXECUTIVE SUMMARY
 # =========================================================
 @st.cache_data(ttl=3600, show_spinner=False)
-def generate_executive_summary(
+def _generate_executive_summary(
     month_label: str,
     total_reviews_value: Optional[float],
     avg_rating_value: Optional[float],
@@ -1456,9 +1649,21 @@ Rules:
 - Return only the Markdown bullets.
 """
 
+    return call_gemini_text(prompt)
+
+
+def generate_aspect_summary(**kwargs) -> str:
+    # Only successful output is cached by the inner function.
     try:
-        return call_gemini_text(prompt)
-    except Exception as error:
+        return _generate_aspect_summary(**kwargs)
+    except RuntimeError as error:
+        return f"Aspect summary could not be generated: {error}"
+
+
+def generate_executive_summary(**kwargs) -> str:
+    try:
+        return _generate_executive_summary(**kwargs)
+    except RuntimeError as error:
         return f"Executive summary could not be generated: {error}"
 
 
@@ -1503,10 +1708,12 @@ try:
     latest_month = get_latest_month()
     all_months = available_month_keys()
 except Exception as error:
+    auth_surface.empty()
     st.error(f"Could not connect to the SIMOSA Google Sheet: {error}")
     st.stop()
 
 if not all_months:
+    auth_surface.empty()
     st.error("No monthly summary worksheets were found in the SIMOSA Google Sheet.")
     st.stop()
 
@@ -1590,6 +1797,7 @@ if st.sidebar.button("Refresh dashboard data", use_container_width=True):
 try:
     current_bundle = preprocess_bundle(load_month_bundle(selected_month))
 except Exception as error:
+    auth_surface.empty()
     st.error(f"Could not load {parse_month_label(selected_month)} data: {error}")
     st.stop()
 
@@ -1680,6 +1888,7 @@ unique_tagged = unique_tagged_review_count(tagged_df)
 # =========================================================
 # HERO
 # =========================================================
+auth_surface.empty()
 st.markdown(
     f"""
     <div class="simosa-hero-wrap">
@@ -1797,10 +2006,10 @@ with overview_tab:
                         y=chart_df["avg_rating"],
                         mode="lines+markers",
                         name="Average rating",
-                        line=dict(width=4, color=PURPLE),
-                        marker=dict(size=9, color=ORANGE, line=dict(width=2, color="#FFFFFF")),
+                        line=dict(width=2.5, color=PURPLE),
+                        marker=dict(size=6, color=PURPLE, line=dict(width=1.5, color="#FFFFFF")),
                         fill="tozeroy",
-                        fillcolor="rgba(123,63,242,0.05)",
+                        fillcolor="rgba(83,107,145,0.06)",
                         hovertemplate="Date: %{x|%d %b}<br>Avg rating: %{y:.2f}<extra></extra>",
                     )
                 )
@@ -1865,8 +2074,7 @@ with overview_tab:
                     y=weekly_df["reviews"],
                     name="Reviews",
                     marker=dict(
-                        color=weekly_df["reviews"],
-                        colorscale=[[0, "#FFD9B5"], [0.5, "#F99863"], [1, "#E83882"]],
+                        color="#94A6BF",
                         line=dict(width=0),
                     ),
                     yaxis="y",
@@ -1879,8 +2087,8 @@ with overview_tab:
                     y=weekly_df["avg_sentiment"],
                     name="Avg sentiment",
                     mode="lines+markers",
-                    line=dict(color=PURPLE, width=4),
-                    marker=dict(color="#FFFFFF", size=9, line=dict(color=PURPLE, width=3)),
+                    line=dict(color=PURPLE_DEEP, width=2.5),
+                    marker=dict(color="#FFFFFF", size=6, line=dict(color=PURPLE_DEEP, width=2)),
                     yaxis="y2",
                     hovertemplate="Week %{x}<br>Sentiment: %{y:.2f}<extra></extra>",
                 )
@@ -1928,7 +2136,7 @@ with overview_tab:
                     x="Rating",
                     y="Reviews",
                     color="Reviews",
-                    color_continuous_scale=["#EEE8F8", "#F3A466", "#E83882", "#6E3AD7"],
+                    color_continuous_scale=["#D6DFE9", "#536B91"],
                     text_auto=".0f",
                 )
                 fig.update_layout(coloraxis_showscale=False)
@@ -1947,7 +2155,7 @@ with overview_tab:
                     y="reviews",
                     text="reviews",
                     color="reviews",
-                    color_continuous_scale=["#F7D8B4", "#F47A6C", "#8A43D9"],
+                    color_continuous_scale=["#D6DFE9", "#536B91"],
                 )
                 fig.update_layout(coloraxis_showscale=False)
                 render_plotly(fig, "simosa_review_windows", height=355)
@@ -2046,8 +2254,8 @@ with intelligence_tab:
                     y=trend_df["total_reviews"],
                     name="Total reviews",
                     mode="lines+markers+text",
-                    line=dict(width=4.5, color=PURPLE, shape="spline", smoothing=0.35),
-                    marker=dict(size=15, color="#FFFFFF", line=dict(width=3.5, color=PURPLE)),
+                    line=dict(width=2.5, color=PURPLE, shape="linear"),
+                    marker=dict(size=7, color="#FFFFFF", line=dict(width=2, color=PURPLE)),
                     text=[f"{v:,.0f}" for v in trend_df["total_reviews"]],
                     textposition="top center",
                     textfont=dict(color=PURPLE_DEEP, size=13, family="Inter, Segoe UI, Arial"),
@@ -2118,7 +2326,7 @@ with intelligence_tab:
                 y="Aspect",
                 orientation="h",
                 color="priority_score",
-                color_continuous_scale=["#FFD09C", "#F47A6C", "#C94F85", "#7B3FF2"],
+                color_continuous_scale=["#E4CED0", "#98515B"],
                 text="score_label",
                 custom_data=["mentions", "Negative", "negative_rate", "priority"],
                 labels={
@@ -2230,9 +2438,9 @@ with intelligence_tab:
                 y="negative_change",
                 color="color_norm",
                 color_continuous_scale=[
-                    [0.0, "#3A9D7D"],
-                    [0.5, "#F2D6B0"],
-                    [1.0, "#CF4767"],
+                    [0.0, GREEN],
+                    [0.5, "#E8ECF0"],
+                    [1.0, RED],
                 ],
                 range_color=[-max_abs, max_abs],
                 labels={"negative_change": "Change in negative mentions"},
@@ -2334,7 +2542,7 @@ with intelligence_tab:
 
         if not executive_review_records:
             st.info("Not enough written review evidence is available to build the executive summary.")
-        else:
+        elif st.toggle("Generate AI executive summary", key="enable_executive_ai"):
             with st.spinner("Building executive summary from customer feedback..."):
                 executive_summary = generate_executive_summary(
                     month_label=parse_month_label(selected_month),
@@ -2446,7 +2654,7 @@ with reviews_tab:
             )
             aspect_reviews = aspect_reviews[aspect_reviews != ""].drop_duplicates()
 
-            if not aspect_reviews.empty:
+            if not aspect_reviews.empty and st.toggle("Generate AI aspect summary", key="enable_aspect_ai"):
                 with st.spinner(f"Analysing {selected_aspect} feedback..."):
                     aspect_summary = generate_aspect_summary(
                         aspect=selected_aspect,
