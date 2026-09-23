@@ -1465,7 +1465,10 @@ def call_gemini_text(prompt: str) -> str:
             response = client.models.generate_content(
                 model=model,
                 contents=prompt,
-                config=types.GenerateContentConfig(max_output_tokens=2048),
+                config=types.GenerateContentConfig(
+                    max_output_tokens=4096,
+                    temperature=0.2,
+                ),
             )
             output = (response.text or "").strip()
             if not output:
@@ -1545,6 +1548,7 @@ Requirements:
 # =========================================================
 # GEMINI — EXECUTIVE SUMMARY
 # =========================================================
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def _generate_executive_summary(
     month_label: str,
@@ -1562,40 +1566,76 @@ def _generate_executive_summary(
 ) -> str:
     """Create a leadership-ready monthly readout grounded in metrics and reviews."""
 
+    # -----------------------------------------------------
+    # FORMAT HELPERS
+    # -----------------------------------------------------
     def fmt_num(value, decimals=1):
         if value is None or pd.isna(value):
             return "N/A"
         return f"{float(value):.{decimals}f}"
 
     current_reviews_text = (
-        f"{int(total_reviews_value):,}" if total_reviews_value is not None else "N/A"
-    )
-    previous_reviews_text = (
-        f"{int(prev_reviews_value):,}" if prev_reviews_value is not None else "N/A"
+        f"{int(total_reviews_value):,}"
+        if total_reviews_value is not None
+        else "N/A"
     )
 
+    previous_reviews_text = (
+        f"{int(prev_reviews_value):,}"
+        if prev_reviews_value is not None
+        else "N/A"
+    )
+
+    # -----------------------------------------------------
+    # ASPECT STATISTICS
+    # -----------------------------------------------------
     aspect_lines = []
+
     for row in aspect_stats:
         aspect_lines.append(
-            f"- {row[0]}: {int(row[1])} mentions, {int(row[2])} positive, "
-            f"{int(row[3])} negative, {float(row[4]):.1f}% positive, "
+            f"- {row[0]}: "
+            f"{int(row[1])} mentions, "
+            f"{int(row[2])} positive, "
+            f"{int(row[3])} negative, "
+            f"{float(row[4]):.1f}% positive, "
             f"{float(row[5]):.1f}% negative"
         )
-    aspect_text = "\n".join(aspect_lines) or "No aspect statistics available."
 
+    aspect_text = (
+        "\n".join(aspect_lines)
+        if aspect_lines
+        else "No aspect statistics available."
+    )
+
+    # -----------------------------------------------------
+    # CUSTOMER REVIEW EVIDENCE
+    # -----------------------------------------------------
     review_lines = []
+
     for aspect, sentiment, rating, review in review_records:
         review_lines.append(
-            f"- Aspect: {aspect} | Sentiment: {sentiment} | "
-            f"Rating: {rating} | Review: {review}"
+            f"- Aspect: {aspect} | "
+            f"Sentiment: {sentiment} | "
+            f"Rating: {rating} | "
+            f"Review: {review}"
         )
-    reviews_text = "\n".join(review_lines) or "No written review evidence available."
 
+    reviews_text = (
+        "\n".join(review_lines)
+        if review_lines
+        else "No written review evidence available."
+    )
+
+    # -----------------------------------------------------
+    # PROMPT
+    # -----------------------------------------------------
     prompt = f"""
 You are a senior consumer intelligence and UX research analyst.
 
 Create the monthly executive summary for SIMOSA Google Play customer feedback.
+
 Use ONLY the metrics, aspect statistics, and customer reviews supplied below.
+Do not invent information that is not present in the supplied evidence.
 
 REPORTING MONTH
 {month_label}
@@ -1619,37 +1659,180 @@ ASPECT STATISTICS
 ACTUAL CUSTOMER REVIEW EVIDENCE
 {reviews_text}
 
-Write a management-ready executive summary using simple English.
 
-Rules:
-- Return 5 to 7 main bullet points in Markdown.
-- The FIRST bullet must give the overall month overview: total reviews, average rating,
-  positive share, negative share, neutral share, and month-over-month movement when
-  previous-month data is available.
+Write a management-ready executive summary using simple, clear English.
+
+RULES
+
+- Return exactly 5 to 7 main bullet points in Markdown.
+- Every bullet must begin with "- ".
+- Do not use numbered lists.
+- Do not use nested bullet lists.
+- Do not add a heading because the dashboard already provides one.
+
+- The FIRST bullet must summarize the overall month:
+  total reviews, average rating, positive share, negative share,
+  neutral share, and month-over-month movement when previous-month
+  information is available.
+
 - Include both areas that performed well and areas that performed poorly.
-- For strong areas, explain WHY users were positive using specific experiences found
-  in the supplied reviews.
-- For weak areas, explain the concrete problems users experienced using the supplied
-  reviews.
-- Use useful statistics such as mention counts, positive counts, negative counts,
-  positive percentages, and negative percentages where they strengthen the point.
-- Prioritize important findings; do not create one bullet for every aspect.
-- When an aspect has several recurring issues, group them into one clear bullet.
-- Bold important aspect names, issue names, numbers, percentages, and key findings
-  using Markdown **bold**.
-- You may include a very short direct customer quote only when it strongly explains
-  an issue. The quote must be copied exactly from the supplied evidence.
-- Never invent a quote, statistic, issue, or trend.
+
+- For strong areas, explain WHY users were positive using specific
+  experiences found in the supplied reviews.
+
+- For weak areas, explain the concrete problems users experienced
+  using the supplied reviews.
+
+- Use useful statistics such as mention counts, positive counts,
+  negative counts, positive percentages, and negative percentages
+  where they strengthen the finding.
+
+- Prioritize important findings.
+- Do not create one bullet for every aspect.
+- If one aspect contains several recurring issues, combine them into
+  one coherent bullet.
+
+- Bold important aspect names, issue names, numbers, percentages,
+  and key findings using Markdown **bold**.
+
+- You may include a very short direct customer quote only when it
+  strongly explains an issue.
+- Any quote must be copied exactly from the supplied review evidence.
+
+- Never invent a quote, statistic, issue, cause, or trend.
 - Do not call something a trend unless comparison data supports it.
-- Do not make recommendations. If customers explicitly ask for a feature, describe it
-  as a customer need rather than as your recommendation.
-- Do not add a heading because the dashboard already has one.
-- Do not use tables or nested bullet lists.
+- Do not make recommendations.
+- If users explicitly request something, describe it as a customer
+  need rather than presenting it as your own recommendation.
+
 - Keep each bullet concise but meaningful.
-- Return only the Markdown bullets.
+
+
+CRITICAL OUTPUT REQUIREMENTS
+
+- Complete ALL 5 to 7 bullets before ending the response.
+- Never stop halfway through a sentence.
+- Never stop halfway through a bullet.
+- Never leave Markdown formatting unfinished.
+- Every **bold** marker must contain both opening and closing **.
+- Do not begin a bullet unless you can finish it.
+- End every bullet with a complete sentence.
+- Return ONLY the Markdown bullet points.
 """
 
-    return call_gemini_text(prompt)
+    # -----------------------------------------------------
+    # VALIDATION
+    # -----------------------------------------------------
+    def validate_summary(summary: str) -> tuple[bool, str]:
+        if not summary or not summary.strip():
+            return False, "Gemini returned an empty executive summary."
+
+        lines = [
+            line.strip()
+            for line in summary.splitlines()
+            if line.strip()
+        ]
+
+        bullets = [
+            line
+            for line in lines
+            if line.startswith("- ")
+        ]
+
+        if len(bullets) < 5:
+            return (
+                False,
+                f"Gemini returned only {len(bullets)} complete bullets."
+            )
+
+        if len(bullets) > 7:
+            return (
+                False,
+                f"Gemini returned {len(bullets)} bullets instead of 5 to 7."
+            )
+
+        # Unmatched Markdown bold marker
+        if summary.count("**") % 2 != 0:
+            return (
+                False,
+                "Gemini returned unfinished Markdown bold formatting."
+            )
+
+        # Detect obviously unfinished endings
+        final_text = summary.rstrip()
+
+        incomplete_endings = (
+            ",",
+            ":",
+            ";",
+            "(",
+            "[",
+            "{",
+            "**",
+        )
+
+        if final_text.endswith(incomplete_endings):
+            return (
+                False,
+                "Gemini appears to have stopped before completing the final sentence."
+            )
+
+        return True, ""
+
+    # -----------------------------------------------------
+    # FIRST GENERATION
+    # -----------------------------------------------------
+    summary = call_gemini_text(prompt)
+
+    valid, validation_error = validate_summary(summary)
+
+    # -----------------------------------------------------
+    # AUTOMATIC RETRY IF GEMINI RETURNS BROKEN OUTPUT
+    # -----------------------------------------------------
+    if not valid:
+
+        retry_prompt = f"""
+{prompt}
+
+IMPORTANT:
+Your previous response was incomplete or malformed.
+
+Generate the executive summary again from the beginning.
+
+This time:
+- Produce 5 to 7 COMPLETE Markdown bullet points.
+- Finish every sentence.
+- Finish every bullet.
+- Close every Markdown **bold** marker.
+- Do not truncate the final bullet.
+- Return only the completed bullet list.
+"""
+
+        summary = call_gemini_text(retry_prompt)
+
+        valid, validation_error = validate_summary(summary)
+
+    # -----------------------------------------------------
+    # FINAL CHECK
+    # -----------------------------------------------------
+    if not valid:
+        raise RuntimeError(
+            "Gemini returned an incomplete executive summary after retrying. "
+            f"{validation_error} Please try generating it again."
+        )
+
+    return summary
+
+
+def generate_executive_summary(**kwargs) -> str:
+    try:
+        return _generate_executive_summary(**kwargs)
+
+    except RuntimeError as error:
+        return (
+            "Executive summary could not be generated: "
+            f"{error}"
+        )
 
 
 def generate_aspect_summary(**kwargs) -> str:
