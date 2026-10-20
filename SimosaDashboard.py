@@ -1854,8 +1854,8 @@ def generate_executive_summary(**kwargs) -> str:
 def build_trend_dataset(month_keys: list[str]) -> pd.DataFrame:
     """Lightweight month-over-month totals pulled straight from each summary_ sheet.
 
-    Only reads total_reviews / positive_pct / negative_pct, so it stays cheap even
-    though it loads several months at once for the trend chart.
+    Reads review totals, sentiment shares, and star counts from the same summaries
+    so both trend charts share a month window without extra worksheet requests.
     """
     rows = []
     for month_key in month_keys:
@@ -1866,7 +1866,10 @@ def build_trend_dataset(month_keys: list[str]) -> pd.DataFrame:
         if summary.empty:
             continue
 
-        summary = to_numeric_safe(summary, ["total_reviews", "positive_pct", "negative_pct"])
+        star_columns = ["one_star", "two_star", "three_star", "four_star", "five_star"]
+        summary = to_numeric_safe(
+            summary, ["total_reviews", "positive_pct", "negative_pct", *star_columns]
+        )
         total = safe_num(summary.iloc[0].get("total_reviews"))
         positive_pct = safe_num(summary.iloc[0].get("positive_pct"))
         negative_pct = safe_num(summary.iloc[0].get("negative_pct"))
@@ -1878,6 +1881,8 @@ def build_trend_dataset(month_keys: list[str]) -> pd.DataFrame:
                 "total_reviews": total,
                 "positive_reviews": round(total * positive_pct / 100),
                 "negative_reviews": round(total * negative_pct / 100),
+                # Missing counts stay missing rather than appearing as zero reviews.
+                **{column: summary.iloc[0].get(column, float("nan")) for column in star_columns},
             }
         )
 
@@ -2480,6 +2485,116 @@ with intelligence_tab:
                 st.caption(
                     f"Only {len(trend_df)} month(s) of history are available in the sheet; "
                     "the chart will extend to a full 3-month view as more months are added."
+                )
+
+    st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
+
+    with st.container(border=True):
+        section_header(
+            "3-month rating trend analysis",
+            f"Compare 1★ through 5★ review counts across the three most recent months ending "
+            f"{parse_month_label(selected_month)}.",
+            "Rating trends",
+        )
+        rating_series = [
+            ("1★", "one_star", RED),
+            ("2★", "two_star", "#C58B69"),
+            ("3★", "three_star", AMBER),
+            ("4★", "four_star", PURPLE),
+            ("5★", "five_star", GREEN),
+        ]
+        rating_columns = [column for _, column, _ in rating_series]
+        rating_trend_df = trend_df.reindex(
+            columns=["month_label", *rating_columns]
+        ).dropna(subset=rating_columns)
+
+        if rating_trend_df.empty:
+            st.info("No complete monthly star rating distributions are available yet.")
+        else:
+            # Include the month just before the visible window for the first bar's
+            # comparison, while keeping only three months on the chart.
+            prior_window_index = selected_month_index + len(trend_month_keys)
+            rating_history = trend_df.copy()
+            if prior_window_index < len(all_months):
+                rating_history = pd.concat(
+                    [build_trend_dataset([all_months[prior_window_index]]), rating_history],
+                    ignore_index=True,
+                )
+            rating_history = rating_history.set_index("month_key")
+            fig = go.Figure()
+            for label, column, color in rating_series:
+                changes = []
+                for month_key, current in zip(rating_trend_df.index, rating_trend_df[column]):
+                    key = trend_df.loc[month_key, "month_key"]
+                    previous_index = all_months.index(key) + 1
+                    previous_key = all_months[previous_index] if previous_index < len(all_months) else None
+                    if previous_key not in rating_history.index:
+                        changes.append("Previous month unavailable")
+                        continue
+                    previous = rating_history.loc[previous_key, column]
+                    previous_label = parse_month_label(previous_key)
+                    if pd.isna(previous):
+                        change = "Rating count unavailable"
+                    elif previous == 0:
+                        change = "0.0% change" if current == 0 else "Percentage unavailable (previous count was 0)"
+                    else:
+                        percent = (current - previous) / previous * 100
+                        direction = "increase" if percent > 0 else "decrease" if percent < 0 else "change"
+                        change = f"{abs(percent):.1f}% {direction}"
+                    changes.append(f"{change} vs {previous_label}")
+                fig.add_trace(
+                    go.Bar(
+                        x=rating_trend_df["month_label"],
+                        y=rating_trend_df[column],
+                        name=label,
+                        marker=dict(
+                            color=hex_to_rgba(color, 0.82),
+                            line=dict(color=color, width=1.5),
+                        ),
+                        texttemplate="%{y:,.0f}",
+                        textposition="outside",
+                        cliponaxis=False,
+                        customdata=changes,
+                        hovertemplate=f"<b>{label} reviews</b><br>%{{x}}<br>%{{y:,.0f}} reviews<br>%{{customdata}}<extra></extra>",
+                    )
+                )
+            fig = style_figure(fig, height=440)
+            fig.update_layout(
+                barmode="group",
+                bargap=0.30,
+                bargroupgap=0.12,
+                margin=dict(l=20, r=20, t=85, b=35),
+                yaxis_title="Reviews",
+                hovermode="x unified",
+                legend=dict(
+                    title_text="Star rating",
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.08,
+                    xanchor="left",
+                    x=0,
+                    bgcolor="rgba(255,255,255,0.92)",
+                    bordercolor="#EEE9F2",
+                    borderwidth=1,
+                ),
+            )
+            fig.update_xaxes(
+                categoryorder="array",
+                categoryarray=rating_trend_df["month_label"].tolist(),
+            )
+            fig.update_yaxes(rangemode="tozero", tickformat=",.0f")
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+                key="simosa_three_month_rating_trend",
+                config={"displayModeBar": False},
+            )
+            if len(rating_trend_df) < len(trend_df):
+                st.caption("Months with missing star counts are omitted; missing values are not treated as zero.")
+            if len(rating_trend_df) < 3:
+                st.caption(
+                    f"Showing {len(rating_trend_df)} month(s) with complete rating data; "
+                    "the chart will extend to three months as more history becomes available."
                 )
 
     st.markdown('<div class="spacer"></div>', unsafe_allow_html=True)
