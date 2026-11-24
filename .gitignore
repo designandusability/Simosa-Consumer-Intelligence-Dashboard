@@ -21,3 +21,8 @@ simosa-sentiment-automation-6bfff36d7142.json
 # Environment files
 .env
 .env.*
+# Next.js and Vercel
+node_modules/
+.next/
+.vercel/
+!.env.example
