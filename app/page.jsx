@@ -1,5 +1,6 @@
-import { Activity, LockKeyhole } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 import { authClient, viewer } from "../lib/auth";
+import BrandArt from "../components/brand-art";
 import Dashboard from "../components/dashboard";
 
 export const dynamic = "force-dynamic";
@@ -12,11 +13,10 @@ export default async function Home({ searchParams }) {
 
   const { auth } = await searchParams;
   return <main className="login-layout">
-    <div className="login-decoration" aria-hidden="true"><Activity /></div>
+    <BrandArt />
     <section className="login-card">
-      <span className="brand-icon"><Activity size={23} /></span>
-      <p className="eyebrow">Consumer intelligence</p>
-      <h1>SIMOSA</h1>
+      <img className="login-logo" src="/brand/simosa.png" alt="SIMOSA" width="153" height="35" />
+      <h1>Consumer intelligence</h1>
       <p>Use your Jazz email and your SIMOSA dashboard password.</p>
       {!configured && <p className="notice" role="status">Sign-in setup is pending. Contact the dashboard administrator.</p>}
       {configured && auth === "failed" && <p className="notice" role="alert">Sign-in couldn’t be completed. Verify your Jazz email and try again.</p>}

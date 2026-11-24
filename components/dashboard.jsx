@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, BarChart3, CalendarDays, Layers3, LogOut, MessageSquareText, RefreshCw, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import BrandArt from "./brand-art";
+import { BarChart3, CalendarDays, Layers3, LogOut, MessageSquareText, RefreshCw, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import Markdown from "react-markdown";
 import { ChartCard, Empty, RatingChart, SentimentChart, ThemeChart, TrendChart, VolumeChart, WeeklyChart } from "./charts";
 
@@ -68,7 +69,7 @@ function Summary({ kind, month, baseline, aspect }) {
   }
   return <section className="panel summary-card">
     <div><div className="small-icon"><Sparkles size={18} /></div><h3>{kind === "executive" ? "Executive summary" : `${aspect} summary`}</h3>
-      <p className="muted">Generate a Gemini summary from a sample of tagged reviews.</p></div>
+      <p className="muted">Based on a sample of tagged reviews.</p></div>
     <button type="button" className="button secondary" onClick={generate} disabled={working}>
       <Sparkles size={16} />{working ? "Generating…" : summary ? "Generate again" : "Generate summary"}
     </button>
@@ -97,26 +98,29 @@ function Metrics({ data }) {
 }
 
 function Overview({ data }) {
-  const strongest = [...data.priority].sort((a, b) => (b.positivePct ?? 0) - (a.positivePct ?? 0))[0];
+  const risk = data.priority[0];
+  const strongest = data.priority.filter(row => row.positivePct > 0).sort((a, b) => (b.positivePct ?? 0) - (a.positivePct ?? 0))[0];
   const worsening = data.movement.find((row) => row.change > 0);
   const signals = [
-    ["Primary risk", data.priority[0]?.aspect ?? "No actionable risk detected", "Highest combined complaint volume and negative intensity."],
-    ["Strongest positive theme", strongest?.aspect ?? "No positive theme detected", "Actionable theme with the highest positive share."],
-    ["Fastest worsening signal", worsening?.aspect ?? (data.baseline ? "No worsening theme detected" : "Enable a comparison"), "Change in negative mentions versus the comparison month."],
+    ["Primary risk", risk?.aspect ?? "No themes to rank", risk && `${int.format(risk.negative)} negative mentions · ${risk.score.toFixed(1)}/100 pain index`],
+    ["Highest positive share", strongest?.aspect ?? "No positive theme detected", strongest && `${show(strongest.positivePct, "%")} positive · ${int.format(strongest.mentions)} mentions`],
+    ["Largest complaint increase", worsening?.aspect ?? (data.baseline ? "No worsening theme detected" : "Enable a comparison"), worsening && `+${int.format(worsening.change)} negative mentions vs ${data.baselineLabel}`],
   ];
   return <div className="tab-content">
     <Metrics data={data} />
-    <div className="signal-grid">{signals.map(([title, value, detail]) => <article key={title} className="panel signal-card">
-      <p className="eyebrow">{title}</p><h3>{value}</h3><p className="muted">{detail}</p>
-    </article>)}</div>
     <div className="grid-charts overview-charts">
-      <ChartCard title="Rating trajectory" description="Average rating across daily observations."><RatingChart rows={data.daily} /></ChartCard>
-      <ChartCard title="Sentiment mix" description="Share of reviews by sentiment."><SentimentChart metrics={data.metrics} /></ChartCard>
+      <ChartCard title="Daily rating"><RatingChart rows={data.daily} /></ChartCard>
+      <div className="signal-stack">{signals.map(([title, value, detail]) => <article key={title} className="panel signal-card">
+      <p className="eyebrow">{title}</p><h3>{value}</h3>{detail && <p className="muted">{detail}</p>}
+    </article>)}</div>
     </div>
-    <ChartCard title="Weekly sentiment pulse" description="Review volume and average sentiment by reporting week."><WeeklyChart rows={data.weekly} /></ChartCard>
+    <div className="grid-charts overview-charts">
+      <ChartCard title="Weekly activity"><WeeklyChart rows={data.weekly} /></ChartCard>
+      <ChartCard title="Sentiment mix"><SentimentChart metrics={data.metrics} /></ChartCard>
+    </div>
     <div className="grid-charts">
-      <ChartCard title="Star rating distribution" description="Review volumes by star rating."><VolumeChart rows={data.metrics.stars.map((value, i) => ({ label: `${i + 1}★`, value }))} /></ChartCard>
-      <ChartCard title="Review activity windows" description="Unique tagged reviews by days of the month."><VolumeChart rows={data.activity.map((row) => ({ label: row.period, value: row.reviews }))} /></ChartCard>
+      <ChartCard title="Reviews by star rating"><VolumeChart rows={data.metrics.stars.map((value, i) => ({ label: `${i + 1}★`, value }))} /></ChartCard>
+      <ChartCard title="Tagged reviews by day range"><VolumeChart rows={data.activity.map((row) => ({ label: row.period, value: row.reviews }))} /></ChartCard>
     </div>
   </div>;
 }
@@ -130,23 +134,23 @@ function Intelligence({ data }) {
       <article className="panel signal-card"><p className="eyebrow">Highest risk</p><h3>{data.priority[0]?.aspect ?? "—"}</h3><p className="muted">Highest customer pain index</p></article>
     </div>
     <div className="grid-charts">
-      <ChartCard title="Monthly review trends" description="Latest three available reporting months through the selected month."><TrendChart rows={data.trends} /></ChartCard>
-      <ChartCard title="Monthly rating composition" description="Months with complete counts for all five ratings."><TrendChart rows={data.trends} stars /></ChartCard>
+      <ChartCard title="Monthly review trends" description="Up to three reporting months."><TrendChart rows={data.trends} /></ChartCard>
+      <ChartCard title="Monthly star ratings" description="Months with all five star counts."><TrendChart rows={data.trends} stars /></ChartCard>
     </div>
     <div className="grid-charts">
-      <ChartCard title="Customer pain index" description="Combines normalized mention volume and negative rate."><ThemeChart rows={data.priority} /></ChartCard>
-      <ChartCard title="Theme sentiment profile" description="Positive and negative shares by actionable theme."><ThemeChart rows={[...data.priority].sort((a, b) => b.mentions - a.mentions)} profile /></ChartCard>
+      <ChartCard title="Customer pain index" description="Complaint volume and negative share, scored out of 100."><ThemeChart rows={data.priority} /></ChartCard>
+      <ChartCard title="Sentiment by theme"><ThemeChart rows={[...data.priority].sort((a, b) => b.mentions - a.mentions)} profile /></ChartCard>
     </div>
     {!!data.priority.length && <section className="panel table-panel"><h3>Theme priorities</h3><div className="table-scroll"><table>
       <thead><tr><th>Theme</th><th>Priority</th><th>Mentions</th><th>Negative</th><th>Negative rate</th><th>Pain index</th></tr></thead>
       <tbody>{data.priority.map((row) => <tr key={row.aspect}><td>{row.aspect}</td><td><span className={`pill ${row.priority.toLowerCase()}`}>{row.priority}</span></td>
         <td>{int.format(row.mentions)}</td><td>{int.format(row.negative)}</td><td>{show(row.negativeRate, "%")}</td><td>{row.score.toFixed(1)}</td></tr>)}</tbody>
     </table></div></section>}
-    <ChartCard title="Issue movement" description={data.baseline ? `${data.label} compared with ${data.baselineLabel}.` : "Select a comparison month to measure changes in negative mentions."}>
+    <ChartCard title="Change in negative mentions" description={data.baseline ? `${data.label} compared with ${data.baselineLabel}.` : "Select a comparison month."}>
       {data.baseline ? <ThemeChart rows={data.movement} movement /> : <Empty>Comparison is off or an earlier month is unavailable.</Empty>}
-      {!!data.movement.length && <div className="table-scroll"><table><thead><tr><th>Theme</th><th>Current negative</th><th>Comparison negative</th><th>Change</th><th>Rate change</th></tr></thead>
+      {!!data.movement.length && <details className="movement-details"><summary>Compare exact counts</summary><div className="table-scroll"><table><thead><tr><th>Theme</th><th>Current negative</th><th>Comparison negative</th><th>Change</th><th>Rate change</th></tr></thead>
         <tbody>{data.movement.map((row) => <tr key={row.aspect}><td>{row.aspect}</td><td>{row.negative}</td><td>{row.baselineNegative}</td><td>{row.change > 0 ? "+" : ""}{row.change}</td><td>{row.rateChange.toFixed(1)} pp</td></tr>)}</tbody>
-      </table></div>}
+      </table></div></details>}
     </ChartCard>
     <Summary key={`${data.month}-${data.baseline}`} kind="executive" month={data.month} baseline={data.baseline} />
   </div>;
@@ -243,12 +247,12 @@ export default function Dashboard() {
 
   return <div className="dashboard">
     <header className="topbar"><div className="topbar-inner">
-      <div className="brand"><span className="brand-icon"><Activity size={21} /></span><div><strong>SIMOSA</strong><span>Consumer intelligence</span></div></div>
+      <div className="brand"><img src="/brand/simosa.png" alt="SIMOSA" width="102" height="23" /><span>Consumer intelligence</span></div>
       <a className="button ghost" href="/auth/logout"><LogOut size={16} /> Sign out</a>
     </div></header>
     <main className="workspace">
       <section className="hero">
-        <div className="hero-copy"><p className="eyebrow">Google Play review intelligence</p><h1>SIMOSA Product Intelligence</h1><p>Track sentiment, uncover recurring friction, and explore the reviews behind the numbers.</p></div>
+        <BrandArt /><div className="hero-copy"><p className="eyebrow">Google Play reviews</p><h1>Product intelligence</h1></div>
         <div className="hero-period"><CalendarDays size={18} /><span>{data?.label || months.find((item) => item.key === current)?.label || initialLabel || "Reporting period"}</span></div>
       </section>
       <div className="control-bar">
