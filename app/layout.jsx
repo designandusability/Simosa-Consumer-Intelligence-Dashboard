@@ -5,7 +5,7 @@ import "@fontsource/poppins/latin-700.css";
 import "./globals.css";
 
 export const metadata = {
-  title: "SIMOSA Consumer Intelligence",
+  title: "Product Intelligence Dashboard",
   description: "Google Play review intelligence for product, CX and design teams.",
   robots: { index: false, follow: false },
 };

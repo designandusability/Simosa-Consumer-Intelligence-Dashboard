@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ReportFilter from "./report-filter";
 import BrandArt from "./brand-art";
 import { BarChart3, CalendarDays, Layers3, LogOut, MessageSquareText, RefreshCw, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import Markdown from "react-markdown";
@@ -8,13 +9,13 @@ import { ChartCard, Empty, RatingChart, SentimentChart, ThemeChart, TrendChart, 
 
 const tabs = [
   { id: "overview", label: "Overview", icon: BarChart3 },
-  { id: "intelligence", label: "Product intelligence", icon: Layers3 },
-  { id: "reviews", label: "Review explorer", icon: MessageSquareText },
+  { id: "intelligence", label: "Product Intelligence", icon: Layers3 },
+  { id: "reviews", label: "Review Explorer", icon: MessageSquareText },
 ];
 const metricLabels = [
-  ["total", "Total reviews", null], ["rating", "Average rating", "/5"],
-  ["positive", "Positive sentiment", "%"], ["negative", "Negative sentiment", "%"],
-  ["coverage", "Aspect coverage", "%"], ["health", "Product health", "/100"],
+  ["total", "Total Reviews", null], ["rating", "Average Rating", "/5"],
+  ["positive", "Positive Sentiment", "%"], ["negative", "Negative Sentiment", "%"],
+  ["coverage", "Aspect Coverage", "%"], ["health", "Product Health", "/100"],
 ];
 const int = new Intl.NumberFormat("en", { maximumFractionDigits: 0 });
 const dateFormat = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -68,7 +69,7 @@ function Summary({ kind, month, baseline, aspect }) {
     }
   }
   return <section className="panel summary-card">
-    <div><div className="small-icon"><Sparkles size={18} /></div><h3>{kind === "executive" ? "Executive summary" : `${aspect} summary`}</h3>
+    <div><div className="small-icon"><Sparkles size={18} /></div><h3>{kind === "executive" ? "Executive Summary" : `${aspect} Summary`}</h3>
       <p className="muted">Based on a sample of tagged reviews.</p></div>
     <button type="button" className="button secondary" onClick={generate} disabled={working}>
       <Sparkles size={16} />{working ? "Generating…" : summary ? "Generate again" : "Generate summary"}
@@ -102,25 +103,25 @@ function Overview({ data }) {
   const strongest = data.priority.filter(row => row.positivePct > 0).sort((a, b) => (b.positivePct ?? 0) - (a.positivePct ?? 0))[0];
   const worsening = data.movement.find((row) => row.change > 0);
   const signals = [
-    ["Primary risk", risk?.aspect ?? "No themes to rank", risk && `${int.format(risk.negative)} negative mentions · ${risk.score.toFixed(1)}/100 pain index`],
-    ["Highest positive share", strongest?.aspect ?? "No positive theme detected", strongest && `${show(strongest.positivePct, "%")} positive · ${int.format(strongest.mentions)} mentions`],
-    ["Largest complaint increase", worsening?.aspect ?? (data.baseline ? "No worsening theme detected" : "Enable a comparison"), worsening && `+${int.format(worsening.change)} negative mentions vs ${data.baselineLabel}`],
+    ["Primary Risk", risk?.aspect ?? "No Themes To Rank", risk && `${int.format(risk.negative)} negative mentions · ${risk.score.toFixed(1)}/100 pain index`],
+    ["Highest Positive Share", strongest?.aspect ?? "No Positive Theme Detected", strongest && `${show(strongest.positivePct, "%")} positive · ${int.format(strongest.mentions)} mentions`],
+    ["Largest Complaint Increase", worsening?.aspect ?? (data.baseline ? "No Worsening Theme Detected" : "Enable A Comparison"), worsening && `+${int.format(worsening.change)} negative mentions vs ${data.baselineLabel}`],
   ];
   return <div className="tab-content">
     <Metrics data={data} />
     <div className="grid-charts overview-charts">
-      <ChartCard title="Daily rating"><RatingChart rows={data.daily} /></ChartCard>
+      <ChartCard title="Daily Rating"><RatingChart rows={data.daily} /></ChartCard>
       <div className="signal-stack">{signals.map(([title, value, detail]) => <article key={title} className="panel signal-card">
       <p className="eyebrow">{title}</p><h3>{value}</h3>{detail && <p className="muted">{detail}</p>}
     </article>)}</div>
     </div>
     <div className="grid-charts overview-charts">
-      <ChartCard title="Weekly activity"><WeeklyChart rows={data.weekly} /></ChartCard>
-      <ChartCard title="Sentiment mix"><SentimentChart metrics={data.metrics} /></ChartCard>
+      <ChartCard title="Weekly Activity"><WeeklyChart rows={data.weekly} /></ChartCard>
+      <ChartCard title="Sentiment Mix"><SentimentChart metrics={data.metrics} /></ChartCard>
     </div>
     <div className="grid-charts">
-      <ChartCard title="Reviews by star rating"><VolumeChart rows={data.metrics.stars.map((value, i) => ({ label: `${i + 1}★`, value }))} /></ChartCard>
-      <ChartCard title="Tagged reviews by day range"><VolumeChart rows={data.activity.map((row) => ({ label: row.period, value: row.reviews }))} /></ChartCard>
+      <ChartCard title="Reviews By Star Rating"><VolumeChart xTitle="Star Rating" stars rows={data.metrics.stars.map((value, i) => ({ label: `${i + 1}★`, value }))} /></ChartCard>
+      <ChartCard title="Tagged Reviews By Day Range"><VolumeChart xTitle="Day Of Month" name="Tagged Reviews" rows={data.activity.map((row) => ({ label: row.period, value: row.reviews }))} /></ChartCard>
     </div>
   </div>;
 }
@@ -129,26 +130,26 @@ function Intelligence({ data }) {
   const mostDiscussed = [...data.priority].sort((a, b) => b.mentions - a.mentions)[0];
   return <div className="tab-content">
     <div className="signal-grid">
-      <article className="panel signal-card"><p className="eyebrow">Actionable themes</p><h3>{int.format(data.priority.length)}</h3><p className="muted">{int.format(data.coverage.tagged)} unique tagged reviews</p></article>
-      <article className="panel signal-card"><p className="eyebrow">Most discussed</p><h3>{mostDiscussed?.aspect ?? "—"}</h3><p className="muted">Highest actionable mention volume</p></article>
-      <article className="panel signal-card"><p className="eyebrow">Highest risk</p><h3>{data.priority[0]?.aspect ?? "—"}</h3><p className="muted">Highest customer pain index</p></article>
+      <article className="panel signal-card"><p className="eyebrow">Actionable Themes</p><h3>{int.format(data.priority.length)}</h3><p className="muted">{int.format(data.coverage.tagged)} unique tagged reviews</p></article>
+      <article className="panel signal-card"><p className="eyebrow">Most Discussed</p><h3>{mostDiscussed?.aspect ?? "—"}</h3><p className="muted">Highest actionable mention volume</p></article>
+      <article className="panel signal-card"><p className="eyebrow">Highest Risk</p><h3>{data.priority[0]?.aspect ?? "—"}</h3><p className="muted">Highest customer pain index</p></article>
     </div>
     <div className="grid-charts">
-      <ChartCard title="Monthly review trends" description="Up to three reporting months."><TrendChart rows={data.trends} /></ChartCard>
-      <ChartCard title="Monthly star ratings" description="Months with all five star counts."><TrendChart rows={data.trends} stars /></ChartCard>
+      <ChartCard title="Monthly Review Trends" description="Up to three reporting months."><TrendChart rows={data.trends} /></ChartCard>
+      <ChartCard title="Monthly Star Ratings" description="Months with all five star counts."><TrendChart rows={data.trends} stars /></ChartCard>
     </div>
     <div className="grid-charts">
-      <ChartCard title="Customer pain index" description="Complaint volume and negative share, scored out of 100."><ThemeChart rows={data.priority} /></ChartCard>
-      <ChartCard title="Sentiment by theme"><ThemeChart rows={[...data.priority].sort((a, b) => b.mentions - a.mentions)} profile /></ChartCard>
+      <ChartCard title="Customer Pain Index" description="Complaint volume and negative share, scored out of 100."><ThemeChart rows={data.priority} /></ChartCard>
+      <ChartCard title="Sentiment By Theme"><ThemeChart rows={[...data.priority].sort((a, b) => b.mentions - a.mentions)} profile /></ChartCard>
     </div>
-    {!!data.priority.length && <section className="panel table-panel"><h3>Theme priorities</h3><div className="table-scroll"><table>
-      <thead><tr><th>Theme</th><th>Priority</th><th>Mentions</th><th>Negative</th><th>Negative rate</th><th>Pain index</th></tr></thead>
+    {!!data.priority.length && <section className="panel table-panel"><h3>Theme Priorities</h3><div className="table-scroll"><table>
+      <thead><tr><th>Theme</th><th>Priority</th><th>Mentions</th><th>Negative</th><th>Negative Rate</th><th>Pain Index</th></tr></thead>
       <tbody>{data.priority.map((row) => <tr key={row.aspect}><td>{row.aspect}</td><td><span className={`pill ${row.priority.toLowerCase()}`}>{row.priority}</span></td>
         <td>{int.format(row.mentions)}</td><td>{int.format(row.negative)}</td><td>{show(row.negativeRate, "%")}</td><td>{row.score.toFixed(1)}</td></tr>)}</tbody>
     </table></div></section>}
-    <ChartCard title="Change in negative mentions" description={data.baseline ? `${data.label} compared with ${data.baselineLabel}.` : "Select a comparison month."}>
+    <ChartCard title="Change In Negative Mentions" description={data.baseline ? `${data.label} compared with ${data.baselineLabel}.` : "Select a comparison month."}>
       {data.baseline ? <ThemeChart rows={data.movement} movement /> : <Empty>Comparison is off or an earlier month is unavailable.</Empty>}
-      {!!data.movement.length && <details className="movement-details"><summary>Compare exact counts</summary><div className="table-scroll"><table><thead><tr><th>Theme</th><th>Current negative</th><th>Comparison negative</th><th>Change</th><th>Rate change</th></tr></thead>
+      {!!data.movement.length && <details className="movement-details"><summary>Compare Exact Counts</summary><div className="table-scroll"><table><thead><tr><th>Theme</th><th>Current Negative</th><th>Comparison Negative</th><th>Change</th><th>Rate Change</th></tr></thead>
         <tbody>{data.movement.map((row) => <tr key={row.aspect}><td>{row.aspect}</td><td>{row.negative}</td><td>{row.baselineNegative}</td><td>{row.change > 0 ? "+" : ""}{row.change}</td><td>{row.rateChange.toFixed(1)} pp</td></tr>)}</tbody>
       </table></div></details>}
     </ChartCard>
@@ -183,14 +184,14 @@ function Reviews({ data, refresh }) {
 
   return <div className="tab-content">
     <section className="panel table-panel">
-      <h3>Review explorer</h3><p className="muted">Read the Google Play reviews behind the dashboard signals.</p>
+      <h3>Review Explorer</h3><p className="muted">Read the Google Play reviews behind the dashboard signals.</p>
       <div className="review-filters">
         <MultiFilter title="Aspect" choices={facets?.aspects ?? []} values={aspects} update={setAspects} />
         <MultiFilter title="Sentiment" choices={facets?.sentiments ?? []} values={sentiments} update={setSentiments} />
-        <label>Minimum rating<select value={min} onChange={(event) => setMin(Number(event.target.value))}>
+        <label>Minimum Rating<select value={min} onChange={(event) => setMin(Number(event.target.value))}>
           {[1, 2, 3, 4, 5].filter((value) => value <= max).map((value) => <option key={value}>{value}</option>)}
         </select></label>
-        <label>Maximum rating<select value={max} onChange={(event) => setMax(Number(event.target.value))}>
+        <label>Maximum Rating<select value={max} onChange={(event) => setMax(Number(event.target.value))}>
           {[1, 2, 3, 4, 5].filter((value) => value >= min).map((value) => <option key={value}>{value}</option>)}
         </select></label>
       </div>
@@ -209,9 +210,9 @@ function Reviews({ data, refresh }) {
     </section>
     {aspects.length === 1 && <Summary key={`${data.month}-${aspects[0]}`} kind="aspect" month={data.month} aspect={aspects[0]} />}
     <div className="signal-grid">
-      <article className="panel signal-card"><p className="eyebrow">Tagged reviews</p><h3>{int.format(data.coverage.tagged)}</h3><p className="muted">Unique reviews carrying at least one detected theme.</p></article>
-      <article className="panel signal-card"><p className="eyebrow">Untagged reviews</p><h3>{int.format(data.coverage.untagged)}</h3><p className="muted">Reviews that did not match the aspect dictionary.</p></article>
-      <article className="panel signal-card"><p className="eyebrow">Detected-theme rate</p><h3>{show(data.coverage.detectedRate, "%")}</h3><p className="muted">Share of monthly reviews with a detected aspect.</p></article>
+      <article className="panel signal-card"><p className="eyebrow">Tagged Reviews</p><h3>{int.format(data.coverage.tagged)}</h3><p className="muted">Unique reviews carrying at least one detected theme.</p></article>
+      <article className="panel signal-card"><p className="eyebrow">Untagged Reviews</p><h3>{int.format(data.coverage.untagged)}</h3><p className="muted">Reviews that did not match the aspect dictionary.</p></article>
+      <article className="panel signal-card"><p className="eyebrow">Detected-Theme Rate</p><h3>{show(data.coverage.detectedRate, "%")}</h3><p className="muted">Share of monthly reviews with a detected aspect.</p></article>
     </div>
   </div>;
 }
@@ -247,31 +248,23 @@ export default function Dashboard() {
 
   return <div className="dashboard">
     <header className="topbar"><div className="topbar-inner">
-      <div className="brand"><img src="/brand/simosa.png" alt="SIMOSA" width="102" height="23" /><span>Consumer intelligence</span></div>
+      <div className="brand"><img src="/brand/simosa.png" alt="SIMOSA" width="102" height="23" /><span>Product Intelligence Dashboard</span></div>
       <a className="button ghost" href="/auth/logout"><LogOut size={16} /> Sign out</a>
     </div></header>
     <main className="workspace">
       <section className="hero">
-        <BrandArt /><div className="hero-copy"><p className="eyebrow">Google Play reviews</p><h1>Product intelligence</h1></div>
+        <BrandArt /><div className="hero-copy"><img className="hero-logo" src="/brand/simosa.png" alt="SIMOSA" width="153" height="35" /><p className="eyebrow">Google Play Reviews</p><h1>Product Intelligence Dashboard</h1></div>
         <div className="hero-period"><CalendarDays size={18} /><span>{data?.label || months.find((item) => item.key === current)?.label || initialLabel || "Reporting period"}</span></div>
       </section>
       <div className="control-bar">
-        <label>Reporting month<select value={current} onChange={(event) => changeMonth(event.target.value)} disabled={!months.length}>
-          {!months.length && <option value="">Loading months…</option>}
-          {months.map(({ key, label }) => <option value={key} key={key}>{label}</option>)}
-        </select></label>
-        <label>Comparison<select value={mode} onChange={(event) => {
-          const value = event.target.value;
+        <ReportFilter label="Reporting Month" value={current} options={months} onChange={changeMonth} placeholder="Loading months…" />
+        <ReportFilter label="Comparison" value={mode} options={[
+          { key: "previous", label: "Previous month" }, { key: "custom", label: "Choose a month" }, { key: "none", label: "No comparison" },
+        ]} onChange={value => {
           setMode(value);
           setBaseline(value === "custom" ? older[0]?.key ?? "" : "");
-        }}>
-          <option value="previous">Previous month</option><option value="custom">Choose a month</option><option value="none">No comparison</option>
-        </select></label>
-        {mode === "custom" && <label>Comparison month<select aria-label="Comparison month" value={baseline} disabled={!older.length}
-          onChange={(event) => setBaseline(event.target.value)}>
-          {!older.length && <option value="">No earlier months</option>}
-          {older.map(({ key, label }) => <option value={key} key={key}>{label}</option>)}
-        </select></label>}
+        }} />
+        {mode === "custom" && <ReportFilter label="Comparison Month" value={baseline} options={older} onChange={setBaseline} placeholder="No earlier months" />}
         <button className="button secondary refresh" type="button" onClick={() => setRefresh(refresh + 1)}><RefreshCw size={16} /> Refresh</button>
       </div>
       <nav className="tabs" aria-label="Dashboard views">{tabs.map(({ id, label, icon: Icon }) => <button type="button" key={id}
@@ -281,7 +274,7 @@ export default function Dashboard() {
           : tab === "overview" ? <Overview data={data} />
             : tab === "intelligence" ? <Intelligence data={data} />
               : <Reviews key={data.month} data={data} refresh={refresh} />}
-      <footer>SIMOSA Consumer Intelligence <span>Google Play reviews</span></footer>
+      <footer>SIMOSA Product Intelligence Dashboard <span>Google Play reviews</span></footer>
     </main>
   </div>;
 }

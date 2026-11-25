@@ -16,7 +16,7 @@ export default async function Home({ searchParams }) {
     <BrandArt />
     <section className="login-card">
       <img className="login-logo" src="/brand/simosa.png" alt="SIMOSA" width="153" height="35" />
-      <h1>Consumer intelligence</h1>
+      <h1>Product Intelligence Dashboard</h1>
       <p>Use your Jazz email and your SIMOSA dashboard password.</p>
       {!configured && <p className="notice" role="status">Sign-in setup is pending. Contact the dashboard administrator.</p>}
       {configured && auth === "failed" && <p className="notice" role="alert">Sign-in couldn’t be completed. Verify your Jazz email and try again.</p>}

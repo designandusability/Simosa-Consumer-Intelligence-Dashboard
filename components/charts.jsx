@@ -2,11 +2,20 @@
 
 import { useState } from "react";
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, ComposedChart, Legend, Line,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 
 const colors = { berry: "#ab174b", pink: "#9a5a14", green: "#357e6d", red: "#ba596b", neutral: "#9a9993", amber: "#ae854f", grid: "#e8e4dd", ink: "#605d58" };
+
+const starColors = ["#bc4545", "#ce762c", "#cfaa28", "#85b85b", "#216345"];
+function LabeledPlot({ xTitle, yTitle, children }) {
+  return <div className="labeled-plot">
+    <span className="plot-y-title">{yTitle}</span>
+    <div className="chart-box chart-short"><ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer></div>
+    <span className="plot-x-title">{xTitle}</span>
+  </div>;
+}
 
 export function ChartCard({ title, description, children, className = "" }) {
   return <section className={`panel chart-card ${className}`}>
@@ -19,7 +28,7 @@ export function Empty({ children = "No data is available for this period." }) {
   return <div className="empty-state">{children}</div>;
 }
 
-const axis = { axisLine: false, tickLine: false, tick: { fill: colors.ink, fontSize: 12 } };
+const axis = { axisLine: false, tickLine: false, tick: { fill: colors.ink, fontSize: 11, fontWeight: 400 } };
 const tooltip = { contentStyle: { borderRadius: 9, borderColor: colors.grid }, cursor: { fill: "#faf1e9" } };
 const chartMargins = { top: 16, right: 18, bottom: 0, left: 0 };
 const dateTick = (date) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(date));
@@ -50,16 +59,30 @@ export function RatingChart({ rows }) {
 }
 
 export function SentimentChart({ metrics }) {
+  const [view, setView] = useState("bars");
   const rows = [
     { name: "Positive", value: metrics.positive, fill: colors.green },
     { name: "Neutral", value: metrics.neutral, fill: colors.neutral },
     { name: "Negative", value: metrics.negative, fill: colors.red },
   ];
   if (!rows.some((row) => row.value > 0)) return <Empty />;
-  return <ul className="rank-list sentiment-list">{rows.map(({ name, value, fill }) => <li key={name}>
-    <div className="rank-label"><span>{name}</span><strong>{value == null ? "—" : value.toFixed(1) + "%"}</strong></div>
-    <div className="bar-track" aria-hidden="true"><i style={{ width: (value ?? 0) + "%", background: fill }} /></div>
-  </li>)}</ul>;
+  let end = 0;
+  const stops = rows.map(({ value, fill }) => {
+    const start = end;
+    end = Math.min(100, start + Math.max(0, value ?? 0));
+    return `${fill} ${start}% ${end}%`;
+  });
+  stops.push(`var(--line) ${end}% 100%`);
+  return <>
+    <ChartOptions label="Sentiment chart view" values={[["bars", "Bars"], ["donut", "Donut"]]} selected={view} onChange={setView} />
+    <div className={view === "donut" ? "sentiment-donut-layout" : undefined}>
+      {view === "donut" && <div className="sentiment-donut" aria-hidden="true" style={{ backgroundImage: `conic-gradient(${stops.join(", ")})` }} />}
+      <ul className="rank-list sentiment-list">{rows.map(({ name, value, fill }) => <li key={name}>
+        <div className="rank-label"><span>{view === "donut" && <i className="legend-dot" style={{ background: fill }} />}{name}</span><strong>{value == null ? "—" : value.toFixed(1) + "%"}</strong></div>
+        {view === "bars" && <div className="bar-track" aria-hidden="true"><i style={{ width: (value ?? 0) + "%", background: fill }} /></div>}
+      </li>)}</ul>
+    </div>
+  </>;
 }
 
 export function WeeklyChart({ rows }) {
@@ -67,35 +90,35 @@ export function WeeklyChart({ rows }) {
   const volume = metric === "reviews";
   return <>
     <ChartOptions label="Weekly measure" values={[["reviews", "Review count"], ["sentiment", "Sentiment score"]]} selected={metric} onChange={setMetric} />
-    {!rows.some(row => row[metric] != null) ? <Empty /> : <div className="chart-box chart-short">
-      <ResponsiveContainer width="100%" height="100%">
+    {!rows.some(row => row[metric] != null) ? <Empty /> : <LabeledPlot xTitle="Reporting Week" yTitle={volume ? "Review Count" : "Sentiment Score"}>
         <ComposedChart data={rows} margin={chartMargins}>
           <CartesianGrid vertical={false} stroke={colors.grid} />
-          <XAxis dataKey="week" minTickGap={14} {...axis} />
+          <XAxis dataKey="week" height={28} minTickGap={14} {...axis} />
           <YAxis key={metric} allowDecimals={!volume} domain={volume ? [0, "auto"] : [-1, 1]} width={40} {...axis} />
           <Tooltip {...tooltip} />
           {volume ? <Bar dataKey="reviews" name="Reviews" fill={colors.berry} radius={[4, 4, 0, 0]} maxBarSize={40} />
             : <Line dataKey="sentiment" name="Average sentiment" stroke={colors.green} strokeWidth={2} />}
         </ComposedChart>
-      </ResponsiveContainer>
-    </div>}
+    </LabeledPlot>}
   </>;
 }
 
-export function VolumeChart({ rows, name = "Reviews" }) {
+export function VolumeChart({ rows, xTitle, name = "Reviews", stars = false }) {
   if (!rows.some((row) => row.value !== null)) return <Empty />;
-  return <div className="chart-box chart-short"><ResponsiveContainer width="100%" height="100%">
+  return <LabeledPlot xTitle={xTitle} yTitle={name}>
     <BarChart data={rows} margin={chartMargins}>
       <CartesianGrid vertical={false} stroke={colors.grid} />
-      <XAxis dataKey="label" {...axis} /><YAxis allowDecimals={false} width={44} {...axis} />
+      <XAxis dataKey="label" height={28} {...axis} />
+      <YAxis allowDecimals={false} width={40} {...axis} />
       <Tooltip {...tooltip} />
-      <Bar dataKey="value" name={name} fill={colors.berry} radius={[5, 5, 0, 0]} maxBarSize={52} />
+      <Bar dataKey="value" name={name} fill={colors.berry} radius={[5, 5, 0, 0]} maxBarSize={52}>
+        {stars && rows.map((row, i) => <Cell key={row.label} fill={starColors[i]} />)}
+      </Bar>
     </BarChart>
-  </ResponsiveContainer></div>;
+  </LabeledPlot>;
 }
 
 export function TrendChart({ rows, stars = false }) {
-  const palette = [colors.red, "#b77d69", colors.amber, colors.berry, colors.green];
   const data = stars
     ? rows.filter((row) => row.stars.every((value) => value != null))
       .map((row) => ({ ...row, ...Object.fromEntries(row.stars.map((value, i) => [`star${i + 1}`, value])) }))
@@ -107,8 +130,8 @@ export function TrendChart({ rows, stars = false }) {
     <ComposedChart data={data} margin={chartMargins}>
       <CartesianGrid vertical={false} stroke={colors.grid} />
       <XAxis dataKey="month" tickFormatter={shortMonth} {...axis} /><YAxis allowDecimals={false} {...axis} />
-      {stars ? <Tooltip content={<StarTrendTooltip />} /> : <Tooltip {...tooltip} />}<Legend />
-      {stars ? palette.map((fill, i) => <Bar key={i} dataKey={`star${i + 1}`} name={`${i + 1} stars`} fill={fill} radius={[3, 3, 0, 0]} maxBarSize={28} />) : <>
+      {stars ? <Tooltip content={<StarTrendTooltip />} /> : <Tooltip {...tooltip} />}<Legend iconSize={8} />
+      {stars ? starColors.map((fill, i) => <Bar key={i} dataKey={`star${i + 1}`} name={`${i + 1} stars`} fill={fill} radius={[3, 3, 0, 0]} maxBarSize={28} />) : <>
         <Bar dataKey="positives" name="Positive" fill={colors.green} radius={[4, 4, 0, 0]} maxBarSize={43} />
         <Bar dataKey="negatives" name="Negative" fill={colors.red} radius={[4, 4, 0, 0]} maxBarSize={43} />
         <Line type="monotone" dataKey="total" name="Total reviews" stroke={colors.berry} strokeWidth={3} />
