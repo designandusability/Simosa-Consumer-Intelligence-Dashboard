@@ -1,8 +1,7 @@
-import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  authenticatorCode, isPortalTotpAccount, matchesPortalProof, portalProof, portalTotpPreview, transitionPortalTotp, validPilotActivation,
+  authenticatorCode, isPortalTotpAccount, matchesPortalProof, portalProof, portalTotpPreview, transitionPortalTotp,
 } from "../lib/portal-totp.mjs";
 
 const masterKey = "5b".repeat(32);
@@ -63,19 +62,12 @@ test("the preview is excluded from Vercel Production and the live Firebase proje
   assert.equal(portalTotpPreview({ PORTAL_TOTP_PREVIEW: "1", APP_BASE_URL: "http://127.0.0.1:3919" }), true);
 });
 
-test("production rollout is scoped to one address and setup requires a valid activation code", () => {
+test("production enrollment starts directly for the single approved pilot account", () => {
   const env = { VERCEL: "1", VERCEL_ENV: "production", FIREBASE_PROJECT_ID: "simosa-sentiment-analysis", PORTAL_TOTP_PILOT_EMAIL: "tester@jazz.com.pk" };
   assert.equal(isPortalTotpAccount({ email: "Tester@jazz.com.pk" }, env), true);
   assert.equal(isPortalTotpAccount({ email: "other@jazz.com.pk" }, env), false);
   assert.equal(isPortalTotpAccount({ email: "tester@jazz.com.pk" }, { ...env, VERCEL_ENV: "preview" }), false);
-  const activation = "a7".repeat(16);
-  const hash = createHash("sha256").update(activation).digest("hex");
-  assert.equal(validPilotActivation(activation, hash), true);
-  assert.equal(validPilotActivation("a8".repeat(16), hash), false);
-  assert.deepEqual(transitionPortalTotp({}, { ...subject, canRevealSetup: false }), { status: 428 });
   const setup = transitionPortalTotp({}, subject);
-  assert.deepEqual(transitionPortalTotp(setup.state, { ...subject, canRevealSetup: false }), { status: 428 });
-  const code = authenticatorCode(decodeBase32(setup.setupKey), now / 30_000);
-  const enrolled = transitionPortalTotp(setup.state, { ...subject, code });
-  assert.deepEqual(transitionPortalTotp(enrolled.state, { ...subject, canRevealSetup: false }), { status: 202 });
+  assert.equal(setup.status, 201);
+  assert.match(setup.setupKey, /^[A-Z2-7]{32}$/);
 });

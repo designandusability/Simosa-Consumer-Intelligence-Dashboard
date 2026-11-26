@@ -23,11 +23,11 @@ function requestDashboardSession(idToken) {
   });
 }
 
-function requestPortalTotp(idToken, code, activation) {
+function requestPortalTotp(idToken, code) {
   return fetch("/api/auth/portal-totp", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken, code, activation }),
+    body: JSON.stringify({ idToken, code }),
   });
 }
 
@@ -38,8 +38,6 @@ export default function FirebaseLogin({ config, portalTotp = false }) {
   const [enrollment, setEnrollment] = useState(null);
   const [challenge, setChallenge] = useState(null);
   const [portalUser, setPortalUser] = useState(null);
-  const [activationRequired, setActivationRequired] = useState(false);
-  const [activation, setActivation] = useState("");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
@@ -48,8 +46,6 @@ export default function FirebaseLogin({ config, portalTotp = false }) {
     setEnrollment(null);
     setChallenge(null);
     setPortalUser(null);
-    setActivationRequired(false);
-    setActivation("");
     await signOut(auth);
   }
 
@@ -70,17 +66,8 @@ export default function FirebaseLogin({ config, portalTotp = false }) {
     }
   }
 
-  async function beginPortalTotp(auth, user, setupCode) {
-    const response = await requestPortalTotp(await user.getIdToken(), undefined, setupCode);
-    if (response.status === 428) {
-      setPortalUser(user);
-      setChallenge(null);
-      setActivationRequired(true);
-      if (setupCode) setFeedback({ error: true, text: "That setup code did not work. Check it and try again." });
-      return;
-    }
-    setActivationRequired(false);
-    setActivation("");
+  async function beginPortalTotp(auth, user) {
+    const response = await requestPortalTotp(await user.getIdToken());
     if (response.status === 201) {
       const { setupKey } = await response.json();
       const issuer = portalTotp ? platformName + " Preview" : platformName;
@@ -136,7 +123,6 @@ export default function FirebaseLogin({ config, portalTotp = false }) {
     event.preventDefault();
     return run(async auth => {
       if (portalUser) {
-        if (activationRequired) return beginPortalTotp(auth, portalUser, activation.trim());
         const response = await requestPortalTotp(await portalUser.getIdToken(), code);
         if (response.status === 204) {
           await backToSignIn(auth);
@@ -195,9 +181,7 @@ export default function FirebaseLogin({ config, portalTotp = false }) {
         <img src={enrollment.qr} alt="Authenticator setup QR code" width="160" height="160" />
         <details><summary>Enter the setup key manually</summary><code>{enrollment.secret.secretKey}</code></details>
       </div>}
-      {activationRequired ? <label>One-time setup code<input value={activation}
-        onChange={event => setActivation(event.target.value)} type="password" autoComplete="off"
-        pattern="[a-f0-9]{32}" maxLength={32} required /></label> : needsCode ? <label>Authenticator code<input value={code} onChange={event => setCode(event.target.value)}
+      {needsCode ? <label>Authenticator code<input value={code} onChange={event => setCode(event.target.value)}
         inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" required /></label> : <>
         <label>Jazz email<input type="email" value={email} onChange={event => setEmail(event.target.value)}
           placeholder="you@jazz.com.pk" autoComplete="username" required /></label>
@@ -206,7 +190,7 @@ export default function FirebaseLogin({ config, portalTotp = false }) {
       </>}
       {feedback && <p className="notice" role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}
       <button className="button primary" type="submit" disabled={busy}>
-        {busy ? "Please wait…" : activationRequired ? "Continue setup" : enrollment ? "Add authenticator" : (challenge || portalUser) ? "Verify code" : "Sign in"}
+        {busy ? "Please wait…" : enrollment ? "Add authenticator" : (challenge || portalUser) ? "Verify code" : "Sign in"}
       </button>
     </form>
     <div className="login-help login-links">

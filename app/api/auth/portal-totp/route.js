@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { adminAuth, firebaseAdminApp, isCurrentApprovedAccount, sessionCookie, validAuthOrigin } from "../../../../lib/auth";
 import { isApprovedFirebaseSignIn, SESSION_SECONDS } from "../../../../lib/firebase-policy.mjs";
-import { isPortalTotpAccount, portalProof, portalProofCookie, portalTotpPreview, validPilotActivation } from "../../../../lib/portal-totp.mjs";
+import { isPortalTotpAccount, portalProof, portalProofCookie, portalTotpPreview } from "../../../../lib/portal-totp.mjs";
 import { updatePortalFactor } from "../../../../lib/portal-totp-store";
 
 const headers = { "Cache-Control": "no-store" };
@@ -11,7 +11,7 @@ export async function POST(request) {
   const preview = portalTotpPreview();
   if (!preview && !process.env.PORTAL_TOTP_PILOT_EMAIL) return response(404);
   if (!validAuthOrigin(request)) return response(403);
-  const { idToken, code, activation } = await request.json().catch(() => null) ?? {};
+  const { idToken, code } = await request.json().catch(() => null) ?? {};
   if (typeof idToken !== "string" || !idToken || idToken.length > 12000 ||
       (code !== undefined && (typeof code !== "string" || !/^[0-9]{6}$/.test(code)))) return response(400);
 
@@ -25,10 +25,8 @@ export async function POST(request) {
     const account = await auth.getUser(user.uid);
     if (!isCurrentApprovedAccount(account, user) || !isPortalTotpAccount(account)) return response(403);
 
-    const canRevealSetup = (preview && !process.env.PORTAL_TOTP_PILOT_ACTIVATION_HASH)
-      || validPilotActivation(activation, process.env.PORTAL_TOTP_PILOT_ACTIVATION_HASH);
     const result = await updatePortalFactor(firebaseAdminApp(), {
-      uid: user.uid, authTime: user.auth_time, code, masterKey, canRevealSetup,
+      uid: user.uid, authTime: user.auth_time, code, masterKey,
     });
     if (result.status === 201) return Response.json({ setupKey: result.setupKey }, { status: 201, headers });
     if (result.status !== 204) return response(result.status);
