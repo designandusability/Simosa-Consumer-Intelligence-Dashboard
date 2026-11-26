@@ -51,17 +51,15 @@ h3 { font-weight: 500; font-size: 1rem; letter-spacing: -.023em; line-height: 1.
   border-radius: 1.15rem;
   box-shadow: 0 14px 45px #3e211b0d;
 }
-.login-logo { display: block; box-sizing: content-box; padding: .48rem .65rem; border-radius: .45rem; background: #251c1e; margin-bottom: .55rem; }
-.login-card h1 { font-size: clamp(1.27rem, 4.6vw, 1.8rem); font-weight: 600; line-height: 1.2; letter-spacing: -.035em; text-wrap: balance; }
+.login-logo { display: block; border-radius: .7rem; background: #231b1e; padding: .45rem; object-fit: contain; }
+.login-card > .login-organization:not(.notice) { color: var(--accent-dark); font-size: .69rem; margin-top: .3rem; }
+.login-card h1 { font-size: clamp(1.27rem, 4.6vw, 1.72rem); font-weight: 600; line-height: 1.2; letter-spacing: -.035em; text-wrap: balance; }
 .login-card > p:not(.notice) { color: var(--muted); font-size: .85rem; }
 .login-card .notice { width: 100%; }
 .login-actions { display: grid; gap: .88rem; width: 100%; margin-top: .7rem; }
 .login-actions .button { min-height: 2.8rem; }
 .login-help { color: var(--muted); font-size: .79rem; }
 .login-help a { font-weight: 500; text-underline-offset: .16em; }
-.topbar { border-bottom: 1px solid var(--line); background: #fff; }
-.topbar-inner { margin: auto; max-width: 1472px; display: flex; justify-content: space-between; align-items: center; padding: .8rem clamp(1rem, 4vw, 2.6rem); gap: 1rem; }
-.brand { display: flex; align-items: center; gap: .75rem; line-height: 1.24; }
 .workspace { max-width: 1472px; margin: auto; padding: 1.55rem clamp(1rem, 4vw, 2.6rem) 0; }
 .hero { min-height: 8.25rem; display: flex; gap: 1.4rem; justify-content: space-between; align-items: end; position: relative; isolation: isolate; overflow: hidden; border-radius: 1.05rem; color: #fff; background: linear-gradient(108deg, #241a1c 8%, #64162e 58%, #a70247 100%); padding: clamp(1.25rem, 3vw, 2.15rem); }
 .hero-copy { max-width: 47rem; }
@@ -142,13 +140,8 @@ footer { display: flex; gap: .65rem 1rem; flex-wrap: wrap; justify-content: spac
   .metric-card { min-height: 6.7rem; }
   .summary-card { grid-template-columns: 1fr; }
   .summary-card button { justify-self: start; }
-  .topbar-inner .ghost { padding-inline: .44rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
-.topbar { background: #221e1e; color: white; border: 0; }
-.topbar .ghost { color: white; }
-.topbar .ghost:hover { background: #413636; }
-.brand > span { font-size: .8rem; border-left: 1px solid #756968; padding-left: .85rem; }
 .brand-art { position: absolute; inset: 0; overflow: hidden; z-index: -1; pointer-events: none; }
 .brand-art i { position: absolute; display: block; width: clamp(9rem, 19vw, 18rem); aspect-ratio: .8; bottom: -66%; right: 11%; border-radius: 29% 12% 29% 12%; background: linear-gradient(145deg, #ff8e24 2%, #f35459 42%, #a70247 86%); transform: translate(var(--pointer, 0px), var(--drift, 0px)) rotate(calc(-32deg + var(--turn, 0deg))); }
 .brand-art i:first-child { right: 18%; bottom: -83%; opacity: .48; transform: translateY(calc(var(--drift, 0px) * .45)) rotate(-34deg); }
@@ -173,7 +166,6 @@ footer { display: flex; gap: .65rem 1rem; flex-wrap: wrap; justify-content: spac
 @media (max-width: 760px) {
   .hero .brand-art { left: 45%; opacity: .55; }
   .hero h1 { text-shadow: 0 1px 4px #38121c; }
-  .brand > span { max-width: 8rem; }
 }
 
 .chart-tools { display: flex; gap: .6rem; flex-wrap: wrap; }
@@ -232,7 +224,6 @@ th { font-weight: 500; }
   .hero-period { align-self: start; }
 }
 @media (max-width: 420px) {
-  .brand > span { display: none; }
 }
 
 .login-form { display: grid; gap: .85rem; text-align: left; }
@@ -245,3 +236,70 @@ th { font-weight: 500; }
 
 .login-setup { display: grid; gap: .55rem; justify-items: center; text-align: center; font-size: .8rem; }
 .login-setup code { display: block; overflow-wrap: anywhere; }
+
+.portal { display: grid; grid-template-columns: 15rem minmax(0, 1fr); min-height: 100svh; }
+.portal-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  max-height: 100svh;
+  overflow: auto;
+  gap: 1.35rem;
+  padding: 1.4rem .9rem .9rem;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+.portal-identity { display: grid; gap: .34rem; padding: 0 .55rem 1.1rem; border-bottom: 1px solid var(--line); }
+.portal-identity span { color: var(--muted); font-size: .7rem; }
+.portal-identity strong { font-size: .9rem; line-height: 1.4; font-weight: 600; }
+.portal-nav { display: grid; gap: .3rem; }
+.portal-nav a {
+  display: flex;
+  gap: .65rem;
+  align-items: center;
+  min-height: 2.7rem;
+  padding: .62rem .66rem;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: .55rem;
+}
+.portal-nav svg { flex: none; }
+.portal-nav a:hover, .portal-nav a[aria-current="page"] { color: var(--accent-dark); background: var(--accent-quiet); }
+.portal-sign-out { margin-top: auto; border-top: 1px solid var(--line); padding-top: .6rem; }
+.portal-sign-out .button { font-size: .78rem; }
+.portal-empty { width: 100%; }
+.portal-empty p { color: var(--muted); margin-top: .75rem; }
+.portal > .dashboard { min-width: 0; container-type: inline-size; }
+
+@container (max-width: 68rem) {
+  .portal .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container (max-width: 48rem) {
+  .portal .grid-charts, .portal .signal-grid { grid-template-columns: 1fr; }
+  .portal .review-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 33rem) {
+  .portal .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 48rem) {
+  .portal { grid-template-columns: minmax(0, 1fr); }
+  .portal-sidebar {
+    position: static;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: auto;
+    max-height: none;
+    gap: .55rem .8rem;
+    padding: .8rem 1rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .portal-identity { padding: 0; border-bottom: 0; }
+  .portal-nav { grid-row: 2; grid-column: 1 / -1; justify-items: start; }
+  .portal-sign-out { grid-row: 1; grid-column: 2; margin: 0; border: 0; padding: 0; }
+}

@@ -3,10 +3,11 @@ import "@fontsource/poppins/latin-500.css";
 import "@fontsource/poppins/latin-600.css";
 import "@fontsource/poppins/latin-700.css";
 import "./globals.css";
+import { platformName } from "../lib/brand.mjs";
 
 export const metadata = {
-  title: "Product Intelligence Dashboard",
-  description: "Google Play review intelligence for product, CX and design teams.",
+  title: platformName,
+  description: "Customer experience dashboards for Jazz Lifestyle Ventures.",
   robots: { index: false, follow: false },
 };
 

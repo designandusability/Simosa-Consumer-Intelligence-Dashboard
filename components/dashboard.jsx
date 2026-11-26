@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import ReportFilter from "./report-filter";
 import BrandArt from "./brand-art";
-import { BarChart3, CalendarDays, Layers3, LogOut, MessageSquareText, RefreshCw, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { BarChart3, CalendarDays, Layers3, MessageSquareText, RefreshCw, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import Markdown from "react-markdown";
 import { ChartCard, Empty, RatingChart, SentimentChart, ThemeChart, TrendChart, VolumeChart, WeeklyChart } from "./charts";
 
@@ -247,13 +247,9 @@ export default function Dashboard() {
   }
 
   return <div className="dashboard">
-    <header className="topbar"><div className="topbar-inner">
-      <div className="brand"><img src="/brand/simosa.png" alt="SIMOSA" width="102" height="23" /><span>Product Intelligence Dashboard</span></div>
-      <form action="/api/auth/logout" method="post"><button className="button ghost" type="submit"><LogOut size={16} /> Sign out</button></form>
-    </div></header>
     <main className="workspace">
       <section className="hero">
-        <BrandArt /><div className="hero-copy"><img className="hero-logo" src="/brand/simosa.png" alt="SIMOSA" width="153" height="35" /><p className="eyebrow">Google Play Reviews</p><h1>Product Intelligence Dashboard</h1></div>
+        <BrandArt /><div className="hero-copy"><img className="hero-logo" src="/brand/simosa.png" alt="SIMOSA" width="153" height="35" /><p className="eyebrow">Google Play Reviews</p><h1>SIMOSA Sentiment Analysis</h1></div>
         <div className="hero-period"><CalendarDays size={18} /><span>{data?.label || months.find((item) => item.key === current)?.label || initialLabel || "Reporting period"}</span></div>
       </section>
       <div className="control-bar">
@@ -274,7 +270,7 @@ export default function Dashboard() {
           : tab === "overview" ? <Overview data={data} />
             : tab === "intelligence" ? <Intelligence data={data} />
               : <Reviews key={data.month} data={data} refresh={refresh} />}
-      <footer>SIMOSA Product Intelligence Dashboard <span>Google Play reviews</span></footer>
+      <footer>SIMOSA Sentiment Analysis <span>Google Play reviews</span></footer>
     </main>
   </div>;
 }

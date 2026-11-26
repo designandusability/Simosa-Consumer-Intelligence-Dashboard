@@ -2,10 +2,12 @@ import { filterReviews, taggedReviews } from "../../../lib/analytics.mjs";
 import { protectedResponse, DashboardError } from "../../../lib/http";
 import { readTabs, requireMonth, requireTabs, tabTitles } from "../../../lib/sheets";
 
+import { simosaDashboard } from "../../../lib/dashboard-access.mjs";
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
-  return protectedResponse(async () => {
+  return protectedResponse(simosaDashboard.id, async () => {
     const query = new URL(request.url).searchParams;
     const min = Number(query.get("min") ?? 1);
     const max = Number(query.get("max") ?? 5);

@@ -7,6 +7,7 @@ import {
   signInWithEmailAndPassword, signOut, TotpMultiFactorGenerator,
 } from "firebase/auth";
 import QRCode from "qrcode";
+import { platformName } from "../lib/brand.mjs";
 import { isJazzEmail } from "../lib/firebase-policy.mjs";
 
 function getLoginAuth(config) {
@@ -63,7 +64,7 @@ export default function FirebaseLogin({ config }) {
       if (response.status === 409 && mayEnroll) {
         const session = await multiFactor(user).getSession();
         const secret = await TotpMultiFactorGenerator.generateSecret(session);
-        const qr = await QRCode.toDataURL(secret.generateQrCodeUrl(user.email, "SIMOSA Dashboard"));
+        const qr = await QRCode.toDataURL(secret.generateQrCodeUrl(user.email, platformName));
         setEnrollment({ user, secret, qr });
         enrolling = true;
         return;
@@ -76,7 +77,7 @@ export default function FirebaseLogin({ config }) {
       window.location.replace("/");
     } else {
       setFeedback({ error: true, text: response.status === 403
-        ? "This account isn’t ready for SIMOSA sign-in. Contact the dashboard administrator."
+        ? "This account isn’t ready for dashboard sign-in. Contact the dashboard administrator."
         : "Couldn’t complete sign-in. Try again shortly." });
     }
   }
@@ -125,7 +126,7 @@ export default function FirebaseLogin({ config }) {
     <form className="login-form" onSubmit={submit}>
       {enrollment && <div className="login-setup">
         <p>Scan this QR code in your authenticator app, then enter the six-digit code.</p>
-        <img src={enrollment.qr} alt="SIMOSA authenticator setup QR code" width="160" height="160" />
+        <img src={enrollment.qr} alt="Authenticator setup QR code" width="160" height="160" />
         <details><summary>Enter the setup key manually</summary><code>{enrollment.secret.secretKey}</code></details>
       </div>}
       {needsCode ? <label>Authenticator code<input value={code} onChange={event => setCode(event.target.value)}

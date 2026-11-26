@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { canAccessDashboard } from "../lib/dashboard-access.mjs";
 import { hasCurrentAuthenticator, isApprovedFirebaseSignIn } from "../lib/firebase-policy.mjs";
 
 test("Firebase password sign-in requires a matching Jazz approval claim and independently verified address", () => {
@@ -26,4 +27,17 @@ test("dashboard sessions require a Firebase TOTP sign-in with an enrolled authen
   assert.equal(hasCurrentAuthenticator(account, { firebase: { ...claims.firebase, sign_in_second_factor: "phone" } }), false);
   assert.equal(hasCurrentAuthenticator(account, { firebase: { ...claims.firebase, second_factor_identifier: "removed" } }), false);
   assert.equal(hasCurrentAuthenticator({}, claims), false);
+});
+
+test("dashboard access preserves SIMOSA-only legacy grants and honors explicit assignments", () => {
+  const legacy = { simosa_email: "test@jazz.com.pk" };
+  assert.equal(canAccessDashboard(legacy, "simosa"), true);
+  assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: ["simosa"] }, "simosa"), true);
+  assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: "*" }, "simosa"), true);
+  assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: "*" }, "unregistered"), false);
+  assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: ["*"] }, "simosa"), false);
+  assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: "simosa" }, "simosa"), false);
+  assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: [] }, "simosa"), false);
+  assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: null }, "simosa"), false);
+  assert.equal(canAccessDashboard(undefined, "simosa"), false);
 });

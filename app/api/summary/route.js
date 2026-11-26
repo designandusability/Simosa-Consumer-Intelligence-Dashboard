@@ -1,7 +1,10 @@
 import { actionableReviews, aspectsFrom, executiveEvidence, monthLabel, overviewMetrics, taggedReviews } from "../../../lib/analytics.mjs";
 import { generateSummary } from "../../../lib/gemini";
+import { validAuthOrigin } from "../../../lib/auth";
 import { protectedResponse, DashboardError } from "../../../lib/http";
 import { availableMonths, readTabs, requireMonth, requireTabs, tabTitles } from "../../../lib/sheets";
+
+import { simosaDashboard } from "../../../lib/dashboard-access.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -13,8 +16,8 @@ const hasBulletList = (text) => {
 };
 
 export async function POST(request) {
-  return protectedResponse(async () => {
-    if (request.headers.get("origin") !== new URL(process.env.APP_BASE_URL).origin) {
+  return protectedResponse(simosaDashboard.id, async () => {
+    if (!validAuthOrigin(request)) {
       throw new DashboardError("Open the dashboard to request a summary.", 403);
     }
     let input;

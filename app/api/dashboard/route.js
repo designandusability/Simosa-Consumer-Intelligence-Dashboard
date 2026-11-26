@@ -5,10 +5,12 @@ import {
   prioritize, reviewActivity, reviewDate, taggedReviews, trendMonth,
 } from "../../../lib/analytics.mjs";
 
+import { simosaDashboard } from "../../../lib/dashboard-access.mjs";
+
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
-  return protectedResponse(async () => {
+  return protectedResponse(simosaDashboard.id, async () => {
     const query = new URL(request.url).searchParams;
     const titles = await tabTitles();
     const months = availableMonths(titles);
