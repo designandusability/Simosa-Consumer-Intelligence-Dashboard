@@ -71,3 +71,11 @@ test("production enrollment starts directly for the single approved pilot accoun
   assert.equal(setup.status, 201);
   assert.match(setup.setupKey, /^[A-Z2-7]{32}$/);
 });
+
+test("the production rollout includes additional approved accounts and leaves the pilot fallback available", () => {
+  const env = { VERCEL: "1", VERCEL_ENV: "production", FIREBASE_PROJECT_ID: "simosa-sentiment-analysis", PORTAL_TOTP_ENABLED: "1", PORTAL_TOTP_PILOT_EMAIL: "pilot@jazz.com.pk" };
+  assert.equal(isPortalTotpAccount({ email: "pilot@jazz.com.pk" }, env), true);
+  assert.equal(isPortalTotpAccount({ email: "new-user@jazz.com.pk" }, env), true);
+  assert.equal(isPortalTotpAccount({ email: "new-user@jazz.com.pk" }, { ...env, PORTAL_TOTP_ENABLED: "0" }), false);
+  assert.equal(isPortalTotpAccount({ email: "new-user@jazz.com.pk" }, { ...env, VERCEL_ENV: "preview" }), false);
+});

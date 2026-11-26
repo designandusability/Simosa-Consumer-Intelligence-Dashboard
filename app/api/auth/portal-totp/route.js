@@ -9,7 +9,7 @@ const response = status => new Response(null, { status, headers });
 
 export async function POST(request) {
   const preview = portalTotpPreview();
-  if (!preview && !process.env.PORTAL_TOTP_PILOT_EMAIL) return response(404);
+  if (!preview && process.env.PORTAL_TOTP_ENABLED !== "1" && !process.env.PORTAL_TOTP_PILOT_EMAIL) return response(404);
   if (!validAuthOrigin(request)) return response(403);
   const { idToken, code } = await request.json().catch(() => null) ?? {};
   if (typeof idToken !== "string" || !idToken || idToken.length > 12000 ||

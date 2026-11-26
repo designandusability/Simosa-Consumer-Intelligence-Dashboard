@@ -53,4 +53,8 @@ In the preview environment, point the Firebase settings at that project, set `AP
 
 Use verified Jazz accounts with both the normal `simosa_email` approval and a `portal_totp_preview: true` Firebase custom claim. Approve testers through a trusted channel. The first login sets up a separate authenticator entry. Future logins use that entry. If a tester needs a reset, revoke preview approval before deleting their Firestore factor record, verify their identity out of band, and restore approval only when ready for re-enrollment.
 
-The production pilot uses `PORTAL_TOTP_PILOT_EMAIL` to select one previously approved account. The first successful password sign-in starts QR enrollment. Share the initial password privately with the intended user. Returning sign-ins require an authenticator code. Use a separate `PORTAL_TOTP_KEY` in each environment and keep Firestore factor records client-inaccessible.
+### Production authenticator enrollment
+
+Set `PORTAL_TOTP_ENABLED=1` in Vercel Production to use the portal authenticator for all approved Jazz accounts. The existing Firebase account approval and per-dashboard assignments still apply. Share a unique initial password directly with each user. Their first password sign-in starts QR enrollment. Later sign-ins require only the password and a current authenticator code. Use a separate `PORTAL_TOTP_KEY` in each environment and keep Firestore factor records client-inaccessible.
+
+A single-account pilot can use `PORTAL_TOTP_PILOT_EMAIL` while the broad rollout is off. If an authenticator needs a reset, revoke the account's dashboard approval before removing its portal factor record. Verify the person's identity through a trusted channel before restoring approval for re-enrollment.
