@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 
-const colors = { berry: "#ab174b", pink: "#9a5a14", green: "#357e6d", red: "#ba596b", neutral: "#9a9993", amber: "#ae854f", grid: "#e8e4dd", ink: "#605d58" };
+const colors = { berry: "var(--chart-accent, #ab174b)", pink: "#9a5a14", green: "#357e6d", red: "#ba596b", neutral: "#9a9993", amber: "#ae854f", grid: "#e8e4dd", ink: "#605d58" };
 
 const starColors = ["#bc4545", "#ce762c", "#cfaa28", "#85b85b", "#216345"];
 function LabeledPlot({ xTitle, yTitle, children }) {
@@ -48,7 +48,7 @@ export function RatingChart({ rows }) {
     <ChartOptions label="Daily rating window ending on the latest observation" values={[[0, "Full month"], [14, "Last 14 days"], [7, "Last 7 days"]]} selected={days} onChange={setDays} />
     {!visible.some(row => row.rating != null) ? <Empty /> : <div className="chart-box"><ResponsiveContainer width="100%" height="100%">
     <AreaChart data={visible} margin={chartMargins}>
-      <defs><linearGradient id="rating-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#f16b62" stopOpacity=".38" /><stop offset="100%" stopColor="#f16b62" stopOpacity=".04" /></linearGradient></defs>
+      <defs><linearGradient id="rating-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="var(--chart-accent-fill, #f16b62)" stopOpacity=".38" /><stop offset="100%" stopColor="var(--chart-accent-fill, #f16b62)" stopOpacity=".04" /></linearGradient></defs>
       <CartesianGrid vertical={false} stroke={colors.grid} />
       <XAxis dataKey="date" tickFormatter={dateTick} minTickGap={25} {...axis} />
       <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} width={33} {...axis} />

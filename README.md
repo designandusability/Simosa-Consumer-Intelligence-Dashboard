@@ -1,6 +1,6 @@
 # Semantic CX Intelligence Platform
 
-A Next.js portal for Jazz Lifestyle Ventures. SIMOSA Sentiment Analysis is the first application dashboard. It uses Firebase Authentication for Jazz-only sign-in with a dashboard password and authenticator app, Google Sheets for reporting data, and Gemini for optional summaries. Vercel can build and host it directly from the repository. The original Streamlit files are retained for reference and rollback.
+A Next.js portal for Jazz Lifestyle Ventures. SIMOSA and Tamasha share the same sentiment analysis dashboard layout. It uses Firebase Authentication for Jazz-only sign-in with a dashboard password and authenticator app, Google Sheets for reporting data, and Gemini for optional summaries. Vercel can build and host it directly from the repository. The original Streamlit files are retained for reference and rollback.
 
 ## Run on your Mac
 
@@ -20,6 +20,8 @@ A Next.js portal for Jazz Lifestyle Ventures. SIMOSA Sentiment Analysis is the f
 | `APP_ADDITIONAL_ORIGIN` | Optional. Another trusted origin for the same deployment, such as `https://semantic-cx.vercel.app`. |
 | `GOOGLE_SPREADSHEET_ID` | The ID between `/d/` and the next slash in the SIMOSA Google Sheet URL. |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | The authorized Google service-account JSON. Paste it as one JSON line. The account needs Viewer access to the SIMOSA sheet. |
+| `TAMASHA_GOOGLE_SPREADSHEET_ID` | The ID of the separate Tamasha reporting sheet. Grant the portal service account Viewer access to it. |
+| `TAMASHA_GOOGLE_SERVICE_ACCOUNT_JSON` | Optional. A separate server-only Google credential for Tamasha when the shared service account cannot access its sheet. |
 | `GEMINI_API_KEY` | Optional. Use the appropriate Gemini project key to enable the summary buttons. |
 | `GEMINI_MODEL` | Optional. Defaults to `gemini-3.8-flash`. |
 
@@ -29,9 +31,9 @@ Enable Email/Password and [authenticator-app MFA](https://firebase.google.com/do
 
 Confirm the employee’s exact Jazz email through a trusted work channel, then add their account under **Firebase Authentication → Users**. Record your confirmation and run `node --env-file=.env.local scripts/approve-firebase-user.mjs person@jazz.com.pk --confirmed-work-email --dashboards=simosa`. The approval is bound to that exact email. Disable self-service signup in Identity Platform if enabled for the project. Existing Auth0 users need Firebase accounts.
 
-Use `--dashboards=simosa` for the SIMOSA team, `--all-dashboards` for explicitly approved cross-application users, or `--no-dashboards` to remove dashboard access. Running the script without an access option preserves existing grants and defaults new users to SIMOSA. Users approved before the portal update retain their SIMOSA access.
+Use `--dashboards=simosa` for the SIMOSA team, `--dashboards=tamasha` for the Tamasha team, `--dashboards=simosa,tamasha` for explicitly approved users who need both, `--all-dashboards` for explicitly approved cross-application users, or `--no-dashboards` to remove dashboard access. Running the script without an access option preserves existing grants and defaults new users to SIMOSA. Users approved before the portal update retain their SIMOSA access.
 
-Firebase verifies the dashboard password and authenticator code. The server issues one-hour sessions only after MFA. Each data request checks the current account’s approval, enrolled factor, and dashboard assignment. Add future dashboards to the registry in `lib/dashboard-access.mjs`, render the matching dashboard in the portal, and protect its data routes with the same dashboard ID.
+Firebase verifies the dashboard password and authenticator code. The server issues one-hour sessions only after MFA. Each data request checks the current account’s approval, enrolled factor, and dashboard assignment. Each reporting request uses the selected dashboard ID to choose the spreadsheet and authorize access. The Tamasha spreadsheet contains competitor rows. The portal selects Tamasha’s rows for its own metrics and charts.
 
 ## Deploy to Vercel
 

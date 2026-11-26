@@ -2,7 +2,7 @@ import { ChartNoAxesCombined, LogOut } from "lucide-react";
 import Link from "next/link";
 import { platformName } from "../lib/brand.mjs";
 import { firebaseConfig, viewer } from "../lib/auth";
-import { canAccessDashboard, dashboards, simosaDashboard } from "../lib/dashboard-access.mjs";
+import { canAccessDashboard, dashboards } from "../lib/dashboard-access.mjs";
 import Dashboard from "../components/dashboard";
 import FirebaseLogin from "../components/firebase-login";
 import PortalFrame from "../components/portal-frame";
@@ -30,7 +30,7 @@ export default async function Home({ searchParams }) {
           <button className="button ghost" type="submit"><LogOut size={16} aria-hidden="true" /> Sign out</button>
         </form>
     </>}>
-      {selected?.id === simosaDashboard.id ? <Dashboard /> :
+      {selected ? <Dashboard key={selected.id} dashboard={selected} /> :
         <main className="workspace portal-empty">
           <h1>{available.length ? "Dashboard unavailable" : "No dashboards assigned"}</h1>
           <p>{available.length ? "Choose a dashboard from the navigation." : "Contact the dashboard administrator to request access."}</p>

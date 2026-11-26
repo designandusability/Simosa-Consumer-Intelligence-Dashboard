@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
+import { productRows, reportTabs } from "../lib/product-reports.mjs";
 import {
   aspectsFrom, executiveEvidence, filterReviews, issueMovement, overviewMetrics,
   prioritize, reviewActivity, reviewDate, taggedReviews, trendMonth,
@@ -68,4 +69,15 @@ test("review filters and evidence use actionable records; monthly activity dedup
   assert.equal(executiveEvidence(rows).length, 3);
   assert.equal(executiveEvidence(rows).some((row) => "name" in row), false);
   assert.equal(reviewDate(2), "1900-01-01");
+});
+
+test("Tamasha rows never fall back to competitors in shared reporting tabs", () => {
+  const competitor = { app: "myco", source: "tapmad", total_reviews: 500 };
+  const tamasha = { app: " Tamasha ", source: "TAMASHA", total_reviews: 41 };
+  assert.deepEqual(productRows("tamasha", [competitor, tamasha]), [tamasha]);
+  assert.deepEqual(productRows("tamasha", [competitor, tamasha], "source"), [tamasha]);
+  assert.deepEqual(productRows("tamasha", [competitor]), []);
+  assert.deepEqual(productRows("simosa", [{ total_reviews: 23 }]), [{ total_reviews: 23 }]);
+  assert.equal(reportTabs("tamasha", "2026_09").tagged, "tamasha_tagged_reviews_2026_09");
+  assert.equal(reportTabs("simosa", "2026_09").tagged, "simosa_tagged_reviews_2026_09");
 });

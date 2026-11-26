@@ -45,7 +45,7 @@ function useJson(url) {
   return state.url === url ? state : { data: null, error: "", status: 0 };
 }
 
-function Summary({ kind, month, baseline, aspect }) {
+function Summary({ dashboardId, kind, month, baseline, aspect }) {
   const [summary, setSummary] = useState("");
   const [sampleSize, setSampleSize] = useState(0);
   const [error, setError] = useState("");
@@ -54,7 +54,7 @@ function Summary({ kind, month, baseline, aspect }) {
     setWorking(true);
     setError("");
     try {
-      const response = await fetch("/api/summary", {
+      const response = await fetch(`/api/summary?${new URLSearchParams({ dashboard: dashboardId })}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind, month, baseline, aspect }),
       });
@@ -126,7 +126,7 @@ function Overview({ data }) {
   </div>;
 }
 
-function Intelligence({ data }) {
+function Intelligence({ data, dashboardId }) {
   const mostDiscussed = [...data.priority].sort((a, b) => b.mentions - a.mentions)[0];
   return <div className="tab-content">
     <div className="signal-grid">
@@ -153,7 +153,7 @@ function Intelligence({ data }) {
         <tbody>{data.movement.map((row) => <tr key={row.aspect}><td>{row.aspect}</td><td>{row.negative}</td><td>{row.baselineNegative}</td><td>{row.change > 0 ? "+" : ""}{row.change}</td><td>{row.rateChange.toFixed(1)} pp</td></tr>)}</tbody>
       </table></div></details>}
     </ChartCard>
-    <Summary key={`${data.month}-${data.baseline}`} kind="executive" month={data.month} baseline={data.baseline} />
+    <Summary dashboardId={dashboardId} key={`${data.month}-${data.baseline}`} kind="executive" month={data.month} baseline={data.baseline} />
   </div>;
 }
 
@@ -168,12 +168,12 @@ function MultiFilter({ title, values, choices, update }) {
   </details>;
 }
 
-function Reviews({ data, refresh }) {
+function Reviews({ data, refresh, dashboardId }) {
   const [aspects, setAspects] = useState([]);
   const [sentiments, setSentiments] = useState([]);
   const [min, setMin] = useState(1);
   const [max, setMax] = useState(5);
-  const query = new URLSearchParams({ month: data.month, min, max, refresh });
+  const query = new URLSearchParams({ dashboard: dashboardId, month: data.month, min, max, refresh });
   aspects.forEach((item) => query.append("aspect", item));
   sentiments.forEach((item) => query.append("sentiment", item));
   const { data: reviews, error, status } = useJson(`/api/reviews?${query}`);
@@ -208,16 +208,17 @@ function Reviews({ data, refresh }) {
           </table></div>
         </>}
     </section>
-    {aspects.length === 1 && <Summary key={`${data.month}-${aspects[0]}`} kind="aspect" month={data.month} aspect={aspects[0]} />}
+    {aspects.length === 1 && <Summary dashboardId={dashboardId} key={`${data.month}-${aspects[0]}`} kind="aspect" month={data.month} aspect={aspects[0]} />}
     <div className="signal-grid">
       <article className="panel signal-card"><p className="eyebrow">Tagged Reviews</p><h3>{int.format(data.coverage.tagged)}</h3><p className="muted">Unique reviews carrying at least one detected theme.</p></article>
-      <article className="panel signal-card"><p className="eyebrow">Untagged Reviews</p><h3>{int.format(data.coverage.untagged)}</h3><p className="muted">Reviews that did not match the aspect dictionary.</p></article>
+      <article className="panel signal-card"><p className="eyebrow">Untagged Reviews</p><h3>{show(data.coverage.untagged)}</h3><p className="muted">Reviews that did not match the aspect dictionary.</p></article>
       <article className="panel signal-card"><p className="eyebrow">Detected-Theme Rate</p><h3>{show(data.coverage.detectedRate, "%")}</h3><p className="muted">Share of monthly reviews with a detected aspect.</p></article>
     </div>
   </div>;
 }
 
-export default function Dashboard() {
+export default function Dashboard({ dashboard }) {
+  const dashboardId = dashboard.id;
   const [tab, setTab] = useState("overview");
   const [month, setMonth] = useState("");
   const [mode, setMode] = useState("previous");
@@ -226,7 +227,7 @@ export default function Dashboard() {
   const [months, setMonths] = useState([]);
   const [initialMonth, setInitialMonth] = useState("");
   const [initialLabel, setInitialLabel] = useState("");
-  const query = new URLSearchParams({ compare: mode, refresh });
+  const query = new URLSearchParams({ dashboard: dashboardId, compare: mode, refresh });
   if (month) query.set("month", month);
   if (baseline) query.set("baseline", baseline);
   const { data, error, status } = useJson(`/api/dashboard?${query}`);
@@ -246,10 +247,10 @@ export default function Dashboard() {
     setBaseline(mode === "custom" ? earlier?.key ?? "" : "");
   }
 
-  return <div className="dashboard">
+  return <div className="dashboard" data-dashboard={dashboardId}>
     <main className="workspace">
       <section className="hero">
-        <BrandArt /><div className="hero-copy"><img className="hero-logo" src="/brand/simosa.png" alt="SIMOSA" width="153" height="35" /><p className="eyebrow">Google Play Reviews</p><h1>SIMOSA Sentiment Analysis</h1></div>
+        <BrandArt /><div className="hero-copy"><img className="hero-logo" src={dashboard.heroLogo} alt={dashboard.product} width="153" height="35" /><p className="eyebrow">Google Play Reviews</p><h1>{dashboard.name}</h1></div>
         <div className="hero-period"><CalendarDays size={18} /><span>{data?.label || months.find((item) => item.key === current)?.label || initialLabel || "Reporting period"}</span></div>
       </section>
       <div className="control-bar">
@@ -268,9 +269,9 @@ export default function Dashboard() {
       {error ? <p className="notice" role="alert">{error}{status === 401 && <> <a href="/">Sign in again</a></>}</p>
         : !data ? <div role="status" className="panel loading"><RefreshCw size={18} /> Loading review intelligence…</div>
           : tab === "overview" ? <Overview data={data} />
-            : tab === "intelligence" ? <Intelligence data={data} />
-              : <Reviews key={data.month} data={data} refresh={refresh} />}
-      <footer>SIMOSA Sentiment Analysis <span>Google Play reviews</span></footer>
+            : tab === "intelligence" ? <Intelligence data={data} dashboardId={dashboardId} />
+              : <Reviews key={data.month} data={data} refresh={refresh} dashboardId={dashboardId} />}
+      <footer>{dashboard.name} <span>Google Play reviews</span></footer>
     </main>
   </div>;
 }

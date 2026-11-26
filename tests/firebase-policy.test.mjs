@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { canAccessDashboard } from "../lib/dashboard-access.mjs";
+import { canAccessDashboard, requestedDashboardId } from "../lib/dashboard-access.mjs";
 import { hasCurrentAuthenticator, isApprovedFirebaseSignIn } from "../lib/firebase-policy.mjs";
 
 test("Firebase password sign-in requires a matching Jazz approval claim and independently verified address", () => {
@@ -40,4 +40,16 @@ test("dashboard access preserves SIMOSA-only legacy grants and honors explicit a
   assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: [] }, "simosa"), false);
   assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: null }, "simosa"), false);
   assert.equal(canAccessDashboard(undefined, "simosa"), false);
+});
+
+test("Tamasha access is independent of SIMOSA access through both current and legacy grants", () => {
+  const legacy = { simosa_email: "test@jazz.com.pk" };
+  const tamashaOnly = { ...legacy, cx_dashboards: ["tamasha"] };
+  assert.equal(canAccessDashboard(legacy, "tamasha"), false);
+  assert.equal(canAccessDashboard(tamashaOnly, "tamasha"), true);
+  assert.equal(canAccessDashboard(tamashaOnly, "simosa"), false);
+  assert.equal(canAccessDashboard({ ...legacy, cx_dashboards: "*" }, "tamasha"), true);
+  assert.equal(requestedDashboardId(new URLSearchParams()), "simosa");
+  assert.equal(requestedDashboardId(new URLSearchParams("dashboard=tamasha")), "tamasha");
+  assert.equal(canAccessDashboard({ cx_dashboards: "*" }, requestedDashboardId(new URLSearchParams("dashboard="))), false);
 });

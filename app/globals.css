@@ -315,3 +315,22 @@ th { font-weight: 500; }
   .portal-nav { grid-row: 2; grid-column: 1 / -1; justify-items: start; }
   .portal-sign-out { grid-row: 1; grid-column: 2; margin: 0; border: 0; padding: 0; }
 }
+
+.dashboard[data-dashboard="tamasha"] {
+  --accent: #087486;
+  --accent-dark: #095360;
+  --accent-quiet: #e8f4f6;
+  --chart-accent: #087f8c;
+  --chart-accent-fill: #31a4ab;
+}
+.dashboard[data-dashboard="tamasha"] .hero {
+  background: linear-gradient(108deg, #141719 10%, #182426 60%, #17444b 100%);
+}
+.dashboard[data-dashboard="tamasha"] .hero-logo { width: 3.1rem; }
+.dashboard[data-dashboard="tamasha"] .hero .eyebrow { color: #b5e4e8; }
+.dashboard[data-dashboard="tamasha"] .hero-period { background: #12191cbb; }
+.dashboard[data-dashboard="tamasha"] .brand-art i {
+  background: linear-gradient(145deg, #167ba9 8%, #279464 43%, #e7a329 82%);
+  opacity: .42;
+}
+.dashboard[data-dashboard="tamasha"] :focus-visible { outline-color: var(--accent); }

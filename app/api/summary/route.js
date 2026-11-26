@@ -2,9 +2,9 @@ import { actionableReviews, aspectsFrom, executiveEvidence, monthLabel, overview
 import { generateSummary } from "../../../lib/gemini";
 import { validAuthOrigin } from "../../../lib/auth";
 import { protectedResponse, DashboardError } from "../../../lib/http";
-import { availableMonths, readTabs, requireMonth, requireTabs, tabTitles } from "../../../lib/sheets";
-
-import { simosaDashboard } from "../../../lib/dashboard-access.mjs";
+import { availableMonths, openDashboardSheets, requireMonth, requireTabs } from "../../../lib/sheets";
+import { requestedDashboardId } from "../../../lib/dashboard-access.mjs";
+import { productRows, reportTabs } from "../../../lib/product-reports.mjs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -16,7 +16,8 @@ const hasBulletList = (text) => {
 };
 
 export async function POST(request) {
-  return protectedResponse(simosaDashboard.id, async () => {
+  const dashboardId = requestedDashboardId(new URL(request.url).searchParams);
+  return protectedResponse(dashboardId, async () => {
     if (!validAuthOrigin(request)) {
       throw new DashboardError("Open the dashboard to request a summary.", 403);
     }
@@ -30,22 +31,23 @@ export async function POST(request) {
     if (!["executive", "aspect"].includes(kind) || (kind === "aspect" && typeof aspect !== "string")) {
       throw new DashboardError("Choose an executive or aspect summary.", 400);
     }
+    const { tabTitles, readTabs } = openDashboardSheets(dashboardId);
     const titles = await tabTitles();
     const month = requireMonth(requestedMonth, titles);
-    const taggedTab = `simosa_tagged_reviews_${month}`;
-    const summaryTab = `summary_${month}`;
-    const aspectsTab = `simosa_aspects_${month}`;
+    const { tagged: taggedTab, summary: summaryTab, aspects: aspectsTab } = reportTabs(dashboardId, month);
+    let baselineTab;
     const names = kind === "aspect" ? [taggedTab] : [taggedTab, summaryTab, aspectsTab];
     if (kind === "executive" && baseline) {
       requireMonth(baseline, titles);
       if (!availableMonths(titles).slice(availableMonths(titles).indexOf(month) + 1).includes(baseline)) {
         throw new DashboardError("Choose an earlier comparison month.", 400);
       }
-      names.push(`summary_${baseline}`);
+      baselineTab = reportTabs(dashboardId, baseline).summary;
+      names.push(baselineTab);
     }
     requireTabs(titles, names);
     const tabs = await readTabs(names);
-    const reviews = taggedReviews(tabs[taggedTab]);
+    const reviews = taggedReviews(productRows(dashboardId, tabs[taggedTab]));
 
     if (kind === "aspect") {
       const excerpts = [...new Set(actionableReviews(reviews)
@@ -59,9 +61,12 @@ export async function POST(request) {
 
     const excerpts = executiveEvidence(reviews);
     if (!excerpts.length) throw new DashboardError("No tagged review evidence is available for this month.", 400);
+    const current = productRows(dashboardId, tabs[summaryTab])[0];
+    if (!current) throw new DashboardError("No matching product summary was found for this reporting month.");
+    const comparison = baselineTab ? productRows(dashboardId, tabs[baselineTab])[0] : undefined;
     const evidence = {
-      month: monthLabel(month), metrics: overviewMetrics(tabs[summaryTab][0]),
-      comparison: baseline ? { month: monthLabel(baseline), metrics: overviewMetrics(tabs[`summary_${baseline}`][0]) } : null,
+      month: monthLabel(month), metrics: overviewMetrics(current),
+      comparison: comparison ? { month: monthLabel(baseline), metrics: overviewMetrics(comparison) } : null,
       aspects: aspectsFrom(tabs[aspectsTab]), excerpts,
     };
     let summary = await generateSummary(executiveInstructions, evidence);

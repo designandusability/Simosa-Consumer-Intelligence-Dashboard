@@ -1,17 +1,19 @@
 import { protectedResponse, DashboardError } from "../../../lib/http";
-import { availableMonths, readTabs, requireMonth, requireTabs, tabTitles } from "../../../lib/sheets";
+import { availableMonths, openDashboardSheets, requireMonth, requireTabs } from "../../../lib/sheets";
 import {
   aspectsFrom, issueMovement, monthLabel, number, overviewMetrics,
   prioritize, reviewActivity, reviewDate, taggedReviews, trendMonth,
 } from "../../../lib/analytics.mjs";
-
-import { simosaDashboard } from "../../../lib/dashboard-access.mjs";
+import { requestedDashboardId, simosaDashboard } from "../../../lib/dashboard-access.mjs";
+import { productRows, reportTabs } from "../../../lib/product-reports.mjs";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
-  return protectedResponse(simosaDashboard.id, async () => {
-    const query = new URL(request.url).searchParams;
+  const query = new URL(request.url).searchParams;
+  const dashboardId = requestedDashboardId(query);
+  return protectedResponse(dashboardId, async () => {
+    const { tabTitles, readTabs } = openDashboardSheets(dashboardId);
     const titles = await tabTitles();
     const months = availableMonths(titles);
     if (!months.length) throw new DashboardError("No monthly summary worksheets were found.");
@@ -27,48 +29,48 @@ export async function GET(request) {
     if (baseline && !months.slice(monthIndex + 1).includes(baseline)) {
       throw new DashboardError("Choose an earlier reporting month for the comparison.", 400);
     }
-    const names = {
-      summary: `summary_${month}`, weekly: `weekly_${month}`, daily: `daily_ratings_${month}`,
-      aspects: `simosa_aspects_${month}`, tagged: `simosa_tagged_reviews_${month}`, insights: `simosa_insights_${month}`,
-    };
+    const { raw, untagged, ...names } = reportTabs(dashboardId, month);
     requireTabs(titles, Object.values(names));
     const trendKeys = months.slice(monthIndex, monthIndex + 3).reverse();
     const historyKeys = months.slice(monthIndex, monthIndex + 4);
-    const optional = [`simosa_raw_reviews_${month}`, `simosa_untagged_${month}`];
-    const baselineNames = baseline ? [`summary_${baseline}`, `simosa_aspects_${baseline}`] : [];
+    const baselineTabs = baseline ? reportTabs(dashboardId, baseline) : null;
+    const optional = [raw, untagged, baselineTabs?.summary, baselineTabs?.aspects].filter(title => titles.has(title));
     const rows = await readTabs([
-      ...Object.values(names), ...historyKeys.map((key) => `summary_${key}`),
-      ...[...optional, ...baselineNames].filter((title) => titles.has(title)),
+      ...Object.values(names), ...historyKeys.map(key => reportTabs(dashboardId, key).summary), ...optional,
     ]);
-    const metrics = overviewMetrics(rows[names.summary][0], rows[names.insights][0]);
+    const summaryFor = key => productRows(dashboardId, rows[reportTabs(dashboardId, key).summary] ?? [])[0];
+    const comparison = baseline ? summaryFor(baseline) : undefined;
+    const current = summaryFor(month);
+    if (!current) throw new DashboardError("No matching product summary was found for this reporting month.");
+    const metrics = overviewMetrics(current, productRows(dashboardId, rows[names.insights])[0]);
     const aspects = aspectsFrom(rows[names.aspects]);
     const priority = prioritize(aspects);
-    const [baselineSummary, baselineAspects] = baselineNames;
-    const movement = issueMovement(aspects, aspectsFrom(rows[baselineAspects] ?? []));
-    const tagged = taggedReviews(rows[names.tagged]);
+    const movement = issueMovement(aspects, aspectsFrom(rows[baselineTabs?.aspects] ?? []));
+    const tagged = taggedReviews(productRows(dashboardId, rows[names.tagged]));
     const activity = reviewActivity(tagged, month);
-    const raw = rows[optional[0]]?.length || metrics.total || 0;
+    const rawCount = rows[raw]?.length || metrics.total || 0;
 
     return {
       months: months.map((key) => ({ key, label: monthLabel(key) })),
       month, label: monthLabel(month), baseline, baselineLabel: monthLabel(baseline),
-      metrics, comparison: rows[baselineSummary]?.[0] ? overviewMetrics(rows[baselineSummary][0]) : null,
-      daily: rows[names.daily].map((row) => ({
+      metrics, comparison: comparison ? overviewMetrics(comparison) : null,
+      daily: productRows(dashboardId, rows[names.daily], "source").map((row) => ({
         date: reviewDate(row.date), rating: number(row.avg_rating), reviews: number(row.n_reviews),
       })).filter((row) => row.date).sort((a, b) => a.date.localeCompare(b.date)),
-      weekly: rows[names.weekly].map((row) => ({
+      weekly: productRows(dashboardId, rows[names.weekly]).map((row) => ({
         week: String(row.week_label ?? ""), reviews: number(row.reviews), sentiment: number(row.avg_sentiment),
       })),
       activity: activity.windows, priority, movement,
       trends: trendKeys.flatMap((key) => {
-        const trend = trendMonth(key, rows[`summary_${key}`]?.[0]);
+        const trend = trendMonth(key, summaryFor(key));
         if (!trend) return [];
         const prior = historyKeys[historyKeys.indexOf(key) + 1];
-        const priorTrend = trendMonth(prior, rows[`summary_${prior}`]?.[0]);
+        const priorTrend = prior ? trendMonth(prior, summaryFor(prior)) : null;
         return [{ ...trend, previous: priorTrend && { month: priorTrend.month, stars: priorTrend.stars } }];
       }),
-      coverage: { tagged: activity.unique, untagged: rows[optional[1]]?.length ?? 0,
-        detectedRate: raw ? activity.unique * 100 / raw : 0 },
+      coverage: { tagged: activity.unique,
+        untagged: rows[untagged]?.length ?? (dashboardId === simosaDashboard.id ? 0 : null),
+        detectedRate: rawCount ? activity.unique * 100 / rawCount : 0 },
     };
   });
 }
