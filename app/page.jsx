@@ -5,6 +5,7 @@ import { firebaseConfig, viewer } from "../lib/auth";
 import { canAccessDashboard, dashboards, simosaDashboard } from "../lib/dashboard-access.mjs";
 import Dashboard from "../components/dashboard";
 import FirebaseLogin from "../components/firebase-login";
+import PortalFrame from "../components/portal-frame";
 
 export const dynamic = "force-dynamic";
 
@@ -15,25 +16,26 @@ export default async function Home({ searchParams }) {
     const { dashboard } = await searchParams;
     const selected = dashboard === undefined ? available[0] : available.find(({ id }) => id === dashboard);
 
-    return <div className="portal">
-      <aside className="portal-sidebar">
+    return <PortalFrame sidebar={<>
         <div className="portal-identity"><span>Jazz Lifestyle Ventures</span><strong>{platformName}</strong></div>
         <nav className="portal-nav" aria-label="Application dashboards">
-          {available.map(({ id, name }) => <Link key={id} href={`/?dashboard=${id}`}
+          {available.map(({ id, name, logo }) => <Link key={id} href={`/?dashboard=${id}`}
             aria-current={selected?.id === id ? "page" : undefined}>
-            <ChartNoAxesCombined size={17} aria-hidden="true" />{name}
+            {logo ? <img className="portal-app-logo" src={logo} alt="" width={24} height={24} />
+              : <ChartNoAxesCombined size={17} aria-hidden="true" />}
+            {name}
           </Link>)}
         </nav>
         <form className="portal-sign-out" action="/api/auth/logout" method="post">
           <button className="button ghost" type="submit"><LogOut size={16} aria-hidden="true" /> Sign out</button>
         </form>
-      </aside>
+    </>}>
       {selected?.id === simosaDashboard.id ? <Dashboard /> :
         <main className="workspace portal-empty">
           <h1>{available.length ? "Dashboard unavailable" : "No dashboards assigned"}</h1>
           <p>{available.length ? "Choose a dashboard from the navigation." : "Contact the dashboard administrator to request access."}</p>
         </main>}
-    </div>;
+    </PortalFrame>;
   }
 
   const config = firebaseConfig();
