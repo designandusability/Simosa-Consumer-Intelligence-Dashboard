@@ -1,30 +1,20 @@
-import { LockKeyhole } from "lucide-react";
-import { authClient, viewer } from "../lib/auth";
-import BrandArt from "../components/brand-art";
+import { firebaseConfig, viewer } from "../lib/auth";
 import Dashboard from "../components/dashboard";
+import FirebaseLogin from "../components/firebase-login";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home({ searchParams }) {
-  const configured = !!authClient();
-  const session = configured ? await authClient().getSession() : null;
-  const user = session ? await viewer() : null;
-  if (user) return <Dashboard />;
+export default async function Home() {
+  if (await viewer()) return <Dashboard />;
+  const config = firebaseConfig();
 
-  const { auth } = await searchParams;
   return <main className="login-layout">
-    <BrandArt />
-    <section className="login-card">
-      <img className="login-logo" src="/brand/simosa.png" alt="SIMOSA" width="153" height="35" />
-      <h1>Product Intelligence Dashboard</h1>
-      <p>Use your Jazz email and your SIMOSA dashboard password.</p>
-      {!configured && <p className="notice" role="status">Sign-in setup is pending. Contact the dashboard administrator.</p>}
-      {configured && auth === "failed" && <p className="notice" role="alert">Sign-in couldn’t be completed. Verify your Jazz email and try again.</p>}
-      {session && !user && <p className="notice" role="alert">Your session expired or the sign-in requirements were not met.</p>}
-      {configured && <a className="button primary" href={session ? "/auth/logout" : "/auth/login"}>
-        {session ? "Sign out" : "Continue to sign in"}
-      </a>}
-      <p className="login-help"><LockKeyhole size={14} /> First visit? Select Sign up on the next screen.</p>
+    <section className="login-card" aria-labelledby="login-title">
+      <img className="login-logo" src="/brand/simosa.png" alt="SIMOSA" width="119" height="27" />
+      <h1 id="login-title">Product Intelligence Dashboard</h1>
+      <p>Use your Jazz work email to access SIMOSA.</p>
+      {config ? <FirebaseLogin config={config} />
+        : <p className="notice" role="status">Sign-in setup is pending. Contact the dashboard administrator.</p>}
     </section>
   </main>;
 }

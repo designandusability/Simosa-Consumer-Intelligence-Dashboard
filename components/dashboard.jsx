@@ -195,7 +195,7 @@ function Reviews({ data, refresh }) {
           {[1, 2, 3, 4, 5].filter((value) => value >= min).map((value) => <option key={value}>{value}</option>)}
         </select></label>
       </div>
-      {error ? <p className="notice" role="alert">{error}{status === 401 && <> <a href="/auth/login">Sign in</a></>}</p>
+      {error ? <p className="notice" role="alert">{error}{status === 401 && <> <a href="/">Sign in</a></>}</p>
         : !reviews ? <Empty>Loading matching reviews…</Empty> : !reviews.total ? <Empty>No reviews match these filters.</Empty> : <>
           <p className="match-count">Showing {int.format(reviews.rows.length)} of {int.format(reviews.total)} matched review records</p>
           <div className="table-scroll review-table"><table>
@@ -249,7 +249,7 @@ export default function Dashboard() {
   return <div className="dashboard">
     <header className="topbar"><div className="topbar-inner">
       <div className="brand"><img src="/brand/simosa.png" alt="SIMOSA" width="102" height="23" /><span>Product Intelligence Dashboard</span></div>
-      <a className="button ghost" href="/auth/logout"><LogOut size={16} /> Sign out</a>
+      <form action="/api/auth/logout" method="post"><button className="button ghost" type="submit"><LogOut size={16} /> Sign out</button></form>
     </div></header>
     <main className="workspace">
       <section className="hero">
@@ -269,7 +269,7 @@ export default function Dashboard() {
       </div>
       <nav className="tabs" aria-label="Dashboard views">{tabs.map(({ id, label, icon: Icon }) => <button type="button" key={id}
         aria-current={tab === id ? "page" : undefined} className={tab === id ? "active" : ""} onClick={() => setTab(id)}><Icon size={16} />{label}</button>)}</nav>
-      {error ? <p className="notice" role="alert">{error}{status === 401 && <> <a href="/auth/login">Sign in again</a></>}</p>
+      {error ? <p className="notice" role="alert">{error}{status === 401 && <> <a href="/">Sign in again</a></>}</p>
         : !data ? <div role="status" className="panel loading"><RefreshCw size={18} /> Loading review intelligence…</div>
           : tab === "overview" ? <Overview data={data} />
             : tab === "intelligence" ? <Intelligence data={data} />
