@@ -23,12 +23,23 @@ function requestDashboardSession(idToken) {
   });
 }
 
-export default function FirebaseLogin({ config }) {
+function requestPortalTotp(idToken, code, activation) {
+  return fetch("/api/auth/portal-totp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken, code, activation }),
+  });
+}
+
+export default function FirebaseLogin({ config, portalTotp = false }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [enrollment, setEnrollment] = useState(null);
   const [challenge, setChallenge] = useState(null);
+  const [portalUser, setPortalUser] = useState(null);
+  const [activationRequired, setActivationRequired] = useState(false);
+  const [activation, setActivation] = useState("");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
@@ -36,6 +47,9 @@ export default function FirebaseLogin({ config }) {
     setCode("");
     setEnrollment(null);
     setChallenge(null);
+    setPortalUser(null);
+    setActivationRequired(false);
+    setActivation("");
     await signOut(auth);
   }
 
@@ -56,11 +70,47 @@ export default function FirebaseLogin({ config }) {
     }
   }
 
+  async function beginPortalTotp(auth, user, setupCode) {
+    const response = await requestPortalTotp(await user.getIdToken(), undefined, setupCode);
+    if (response.status === 428) {
+      setPortalUser(user);
+      setChallenge(null);
+      setActivationRequired(true);
+      if (setupCode) setFeedback({ error: true, text: "That setup code did not work. Check it and try again." });
+      return;
+    }
+    setActivationRequired(false);
+    setActivation("");
+    if (response.status === 201) {
+      const { setupKey } = await response.json();
+      const issuer = portalTotp ? platformName + " Preview" : platformName;
+      const settings = new URLSearchParams({ secret: setupKey, issuer });
+      const uri = `otpauth://totp/${encodeURIComponent(issuer + ":" + user.email)}?${settings}`;
+      const qr = await QRCode.toDataURL(uri);
+      setEnrollment({ secret: { secretKey: setupKey }, qr });
+    } else if (response.status !== 202) {
+      await backToSignIn(auth);
+      setFeedback({ error: true, text: response.status === 429
+        ? "Too many attempts. Wait 15 minutes and try again."
+        : "Preview sign-in is unavailable for this account." });
+      return;
+    }
+    setPortalUser(user);
+    setChallenge(null);
+    setCode("");
+  }
+
   async function finishSignIn(auth, user, mayEnroll) {
+    if (portalTotp) return beginPortalTotp(auth, user);
     let response;
     let enrolling = false;
     try {
       response = await requestDashboardSession(await user.getIdToken());
+      if (response.status === 412) {
+        enrolling = true;
+        await beginPortalTotp(auth, user);
+        return;
+      }
       if (response.status === 409 && mayEnroll) {
         const session = await multiFactor(user).getSession();
         const secret = await TotpMultiFactorGenerator.generateSecret(session);
@@ -85,6 +135,22 @@ export default function FirebaseLogin({ config }) {
   function submit(event) {
     event.preventDefault();
     return run(async auth => {
+      if (portalUser) {
+        if (activationRequired) return beginPortalTotp(auth, portalUser, activation.trim());
+        const response = await requestPortalTotp(await portalUser.getIdToken(), code);
+        if (response.status === 204) {
+          await backToSignIn(auth);
+          window.location.replace("/");
+        } else if (response.status === 422) {
+          setFeedback({ error: true, text: "That code didn’t work. Wait for a new code and try again." });
+        } else {
+          await backToSignIn(auth);
+          setFeedback({ error: true, text: response.status === 429
+            ? "Too many attempts. Wait 15 minutes and try again."
+            : "Couldn’t complete verification. Sign in again." });
+        }
+        return;
+      }
       if (enrollment) {
         const assertion = TotpMultiFactorGenerator.assertionForEnrollment(enrollment.secret, code);
         await multiFactor(enrollment.user).enroll(assertion, "Authenticator app");
@@ -121,7 +187,7 @@ export default function FirebaseLogin({ config }) {
     });
   }
 
-  const needsCode = Boolean(enrollment || challenge);
+  const needsCode = Boolean(enrollment || challenge || portalUser);
   return <div className="login-actions">
     <form className="login-form" onSubmit={submit}>
       {enrollment && <div className="login-setup">
@@ -129,7 +195,9 @@ export default function FirebaseLogin({ config }) {
         <img src={enrollment.qr} alt="Authenticator setup QR code" width="160" height="160" />
         <details><summary>Enter the setup key manually</summary><code>{enrollment.secret.secretKey}</code></details>
       </div>}
-      {needsCode ? <label>Authenticator code<input value={code} onChange={event => setCode(event.target.value)}
+      {activationRequired ? <label>One-time setup code<input value={activation}
+        onChange={event => setActivation(event.target.value)} type="password" autoComplete="off"
+        pattern="[a-f0-9]{32}" maxLength={32} required /></label> : needsCode ? <label>Authenticator code<input value={code} onChange={event => setCode(event.target.value)}
         inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" required /></label> : <>
         <label>Jazz email<input type="email" value={email} onChange={event => setEmail(event.target.value)}
           placeholder="you@jazz.com.pk" autoComplete="username" required /></label>
@@ -138,7 +206,7 @@ export default function FirebaseLogin({ config }) {
       </>}
       {feedback && <p className="notice" role={feedback.error ? "alert" : "status"}>{feedback.text}</p>}
       <button className="button primary" type="submit" disabled={busy}>
-        {busy ? "Please wait…" : enrollment ? "Add authenticator" : challenge ? "Verify code" : "Sign in"}
+        {busy ? "Please wait…" : activationRequired ? "Continue setup" : enrollment ? "Add authenticator" : (challenge || portalUser) ? "Verify code" : "Sign in"}
       </button>
     </form>
     <div className="login-help login-links">

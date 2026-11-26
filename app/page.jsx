@@ -4,6 +4,7 @@ import { platformName } from "../lib/brand.mjs";
 import { firebaseConfig, viewer } from "../lib/auth";
 import { canAccessDashboard, dashboards } from "../lib/dashboard-access.mjs";
 import Dashboard from "../components/dashboard";
+import { portalTotpPreview } from "../lib/portal-totp.mjs";
 import FirebaseLogin from "../components/firebase-login";
 import PortalFrame from "../components/portal-frame";
 
@@ -45,7 +46,7 @@ export default async function Home({ searchParams }) {
       <p className="eyebrow login-organization">Jazz Lifestyle Ventures</p>
       <h1 id="login-title">{platformName}</h1>
       <p>Sign in with your Jazz work email.</p>
-      {config ? <FirebaseLogin config={config} /> :
+      {config ? <FirebaseLogin config={config} portalTotp={portalTotpPreview()} /> :
         <p className="notice" role="status">Sign-in setup is pending. Contact the dashboard administrator.</p>}
     </section>
   </main>;

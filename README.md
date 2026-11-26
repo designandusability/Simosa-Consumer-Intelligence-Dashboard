@@ -44,3 +44,13 @@ Firebase verifies the dashboard password and authenticator code. The server issu
 5. Use a stable preview domain and separate values if you want a preview deployment with real sign-in. Keep the existing deployment available until the Vercel checks pass.
 
 [Next.js on Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs) · [Vercel environment variables](https://vercel.com/docs/environment-variables) · [Firebase session cookies](https://firebase.google.com/docs/auth/admin/manage-cookies)
+
+### Portal-managed authenticator preview
+
+This preview requires its own Firebase project and is disabled in Vercel Production. Enable email and password sign-in and create a private Firestore database. Keep `semantic-cx-private-totp` inaccessible to client reads and writes. Give the server credential access to Firestore.
+
+In the preview environment, point the Firebase settings at that project, set `APP_BASE_URL` to the exact preview origin, set `PORTAL_TOTP_PREVIEW=1`, and store a separate 32-byte hex key in `PORTAL_TOTP_KEY`. Generate it with `openssl rand -hex 32`. Keep the key server-side.
+
+Use verified Jazz accounts with both the normal `simosa_email` approval and a `portal_totp_preview: true` Firebase custom claim. Approve testers through a trusted channel. The first login sets up a separate authenticator entry. Future logins use that entry. If a tester needs a reset, revoke preview approval before deleting their Firestore factor record, verify their identity out of band, and restore approval only when ready for re-enrollment.
+
+The production pilot uses `PORTAL_TOTP_PILOT_EMAIL` to select one previously approved account. Store a SHA-256 hex digest of a random 16-byte hex activation code in `PORTAL_TOTP_PILOT_ACTIVATION_HASH` and deliver the code privately to the selected tester. That code authorizes initial seed disclosure only. Returning sign-ins require an authenticator code. Use a separate `PORTAL_TOTP_KEY` in each environment and keep Firestore factor records client-inaccessible.

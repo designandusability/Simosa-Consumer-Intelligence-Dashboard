@@ -2,9 +2,12 @@ import { cookies } from "next/headers";
 import { adminAuth, isCurrentApprovedAccount, sessionCookie, validAuthOrigin } from "../../../../lib/auth";
 import { hasCurrentAuthenticator, isApprovedFirebaseSignIn, SESSION_SECONDS } from "../../../../lib/firebase-policy.mjs";
 
+import { isPortalTotpAccount, portalTotpPreview } from "../../../../lib/portal-totp.mjs";
+
 const headers = { "Cache-Control": "no-store" };
 
 export async function POST(request) {
+  if (portalTotpPreview()) return new Response(null, { status: 404, headers });
   if (!validAuthOrigin(request)) return new Response(null, { status: 403, headers });
   const { idToken } = await request.json().catch(() => null) ?? {};
   if (typeof idToken !== "string" || idToken.length > 12000) {
@@ -22,6 +25,8 @@ export async function POST(request) {
 
     const account = await auth.getUser(user.uid);
     if (!isCurrentApprovedAccount(account, user)) return new Response(null, { status: 403, headers });
+
+    if (isPortalTotpAccount(account)) return new Response(null, { status: 412, headers });
 
     if (!hasCurrentAuthenticator(account, user)) {
       const needsEnrollment = !account.multiFactor?.enrolledFactors.length && !user.firebase.sign_in_second_factor;
